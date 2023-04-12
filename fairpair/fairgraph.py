@@ -3,7 +3,7 @@ from functools import cached_property
 import numpy as np
 import networkx as nx
 
-class FairGraph(nx.DiGraph):
+class FairPairGraph(nx.DiGraph):
 
 
     def __init__(self):
@@ -48,32 +48,25 @@ class FairGraph(nx.DiGraph):
 
     @cached_property
     def minority(self, attribute="Minority") -> nx.Graph:
-        '''
-        Get the minority subgraph
-
-        Parameters
-        ----------
-        - attribute: how the minority is labeled
-
-        Returns
-        -------
-        - graph: a read-only graph view, see nx.subgraph_view
-        '''
+        '''Returns a read-only graph view of the minority subgraph, see nx.subgraph_view'''
         return nx.graphviews.subgraph_view(self, filter_node=lambda x: x in self.minority_nodes(attribute=attribute))
 
 
     @cached_property
     def minority_nodes(self, attribute="Minority") -> list:
-        '''
-        Get the minority nodes
-
-        Parameters
-        ----------
-        - attribute: how the minority is labeled
-
-        Returns
-        -------
-        - nodes: a list of minority nodes
-        '''
+        '''Returns a list of minority nodes'''
         # TODO: implement this using nx.classes.reportviews.NodeView
         return [x for x,y in self.nodes(data=attribute) if y]
+
+
+    @cached_property
+    def majority(self, attribute="Minority") -> nx.Graph:
+        '''Returns a read-only graph view of the majority subgraph, see nx.subgraph_view'''
+        return nx.graphviews.subgraph_view(self, filter_node=lambda x: x in self.majority_nodes(attribute=attribute))
+
+
+    @cached_property
+    def majority_nodes(self, attribute="Minority") -> list:
+        '''Returns a list of minority nodes'''
+        # TODO: implement this using nx.classes.reportviews.NodeView
+        return [x for x,y in self.nodes(data=attribute) if not y]
