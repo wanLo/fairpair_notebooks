@@ -1,1 +1,1 @@
-from .fairgraph import FairPairGraph
+from .fairgraph import FairPairGraph, Distributions
