@@ -1,4 +1,5 @@
 from functools import cached_property
+from typing import List
 
 import numpy as np
 import networkx as nx
@@ -100,7 +101,7 @@ class FairPairGraph(nx.DiGraph):
     @cached_property
     def minority(self, attr="minority") -> nx.Graph:
         '''Returns a read-only graph view of the minority subgraph, see nx.subgraph_view'''
-        return nx.graphviews.subgraph_view(self, filter_node=lambda x: x in self.minority_nodes(attr=attr))
+        return nx.graphviews.subgraph_view(self, filter_node=lambda x: x in self.minority_nodes)
 
 
     @cached_property
@@ -113,7 +114,7 @@ class FairPairGraph(nx.DiGraph):
     @cached_property
     def majority(self, attr="minority") -> nx.Graph:
         '''Returns a read-only graph view of the majority subgraph, see nx.subgraph_view'''
-        return nx.graphviews.subgraph_view(self, filter_node=lambda x: x in self.majority_nodes(attr=attr))
+        return nx.graphviews.subgraph_view(self, filter_node=lambda x: x in self.majority_nodes)
 
 
     @cached_property
@@ -121,3 +122,16 @@ class FairPairGraph(nx.DiGraph):
         '''Returns a list of minority nodes'''
         # TODO: implement this using nx.classes.reportviews.NodeView
         return [x for x,y in self.nodes(data=attr) if not y]
+    
+    @cached_property
+    def success_rates(self, attr="wins") -> List[tuple]:
+        '''Returns a list of all nodes and their success rates'''
+        wins = []
+        for node in self.nodes:
+            node_wins = sum([edge[2][attr] for edge in self.in_edges(node, data=True)])
+            node_losses = sum([edge[2][attr] for edge in self.out_edges(node, data=True)])
+            node_comparisons = node_wins + node_losses
+            if node_comparisons == 0: success = 1/len(self.nodes)
+            else: success = node_wins/node_comparisons
+            wins.append((node, success))
+        return wins
