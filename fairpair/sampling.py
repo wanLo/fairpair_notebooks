@@ -102,7 +102,7 @@ class ProbKnockoutSampling(Sampling):
 
     def apply(self, iter=1, k=10, min_prob=0.01, seed: int | None = None):
         '''
-        In each round, randomly pair nodes which are selected probabilistically based on their ratio of wins (success rate) so far.
+        Select nodes probabilistically based on their ratio of wins (success rate) so far.
 
         Parameters
         ----------
@@ -119,6 +119,40 @@ class ProbKnockoutSampling(Sampling):
             min_rate = min(rates)
             if (min_rate != max_rate):
                 normalized_success = [(node, max(min_prob, (rate-min_rate)/(max_rate-min_rate))) for node, rate in self.G.success_rates]
+            else:
+                normalized_success = [(node, 0.5) for node in self.G.nodes] # all node get equal chance of being selected
+            selected_nodes = [node for node, prob in normalized_success if rng.binomial(1,prob)]
+            self._split_and_compare(selected_nodes, k, iteration, seed)
+
+
+class GroupKnockoutSampling(Sampling):
+
+    def apply(self, iter=1, k=10, seed: int | None = None):
+        '''
+        Select nodes probabilistically based on the highest ratio of wins (success rate) in their group (role models) so far.
+
+        Parameters
+        ----------
+        - iter: how many iterations of ProbKnockout sampling to perform
+        - k: how often each sampled pair will be compared per iteration
+        - seed: seed for the random number generator
+        '''
+        rng = np.random.default_rng(seed=seed)
+        for iteration in range(iter):
+            # success rates per group
+            minority_success = [rate for node, rate in self.G.success_rates if node in self.G.minority_nodes]
+            majority_success = [rate for node, rate in self.G.success_rates if node in self.G.majority_nodes]
+            # highest success per group
+            minority_rate = max(minority_success)
+            majority_rate = max(majority_success)
+            # overall highest and lowest success
+            max_rate = max([minority_rate, majority_rate])
+            min_rate = min([min(minority_success), min(majority_success)])
+            if (min_rate != max_rate):
+                # normalized success rates per group membership
+                minority_rate = (minority_rate-min_rate)/(max_rate-min_rate)
+                majority_rate = (majority_rate-min_rate)/(max_rate-min_rate)
+                normalized_success = [(node, minority_rate) if node in self.G.minority_nodes else (node, majority_rate) for node in self.G.nodes]
             else:
                 normalized_success = [(node, 0.5) for node in self.G.nodes] # all node get equal chance of being selected
             selected_nodes = [node for node, prob in normalized_success if rng.binomial(1,prob)]
