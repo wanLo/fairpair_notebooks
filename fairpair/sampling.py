@@ -24,7 +24,7 @@ def random_list_to_pairs(G:FairPairGraph, nodes:list, seed: int | None = None, w
 class Sampling:
 
     def __init__(self, G:FairPairGraph, split_using=random_list_to_pairs,
-                 log_comparisons=True, warn=True):
+                 log_comparisons=False, log_success=False, warn=True):
         '''
         Initialize the Sampling
 
@@ -38,9 +38,10 @@ class Sampling:
         self.split_using = split_using
         self.warn = warn
 
-        # TODO: add options for logging info (degrees, etc.) while sampling
         self.comparisons_over_time = pd.DataFrame()
         self.log_comparisons = log_comparisons
+        self.success_over_time = pd.DataFrame()
+        self.log_success = log_success
     
     def get_graph(self):
         '''Returns the FairPairGraph this Sampling is applied to.'''
@@ -56,12 +57,26 @@ class Sampling:
             for node, comparisons in self.G.comparisons:
                 df = pd.DataFrame({'node': node, 'minority': self.G.nodes[node]['minority'], 'iteration': iteration, 'comparisons': comparisons}, index=[0])
                 self.comparisons_over_time = pd.concat([self.comparisons_over_time, df], ignore_index=True)
+        if self.log_success:
+            for node, success in self.G.success_rates:
+                df = pd.DataFrame({'node': node, 'minority': self.G.nodes[node]['minority'], 'iteration': iteration, 'success': success}, index=[0])
+                self.success_over_time = pd.concat([self.success_over_time, df], ignore_index=True)
 
     def plot_comparisons_over_time(self):
         '''Plots the #comparisons for each node over time, colored by group membership'''
-        ax = sns.lineplot(data=self.comparisons_over_time, x='iteration', y='comparisons', hue='minority', units='node', estimator=None)
+        self._plot_over_time(data=self.comparisons_over_time, y='comparisons')
+    
+    def plot_success_over_time(self):
+        '''Plots the success rate for each node over time, colored by group membership'''
+        self._plot_over_time(data=self.success_over_time, y='success')
+    
+    def _plot_over_time(self, data:pd.DataFrame, y:str):
+        '''A helper for plotting stats over time'''
+        ax = sns.lineplot(data=data, x='iteration', y=y, hue='minority', units='node', estimator=None)
+        ax.legend(ax.get_legend().legendHandles, ['Majority', 'Minority'], title=None, frameon=False)
         plt.setp(ax.lines, alpha=0.3)
         sns.despine()
+        plt.show()
 
 
 class RandomSampling(Sampling):
@@ -85,7 +100,7 @@ class RandomSampling(Sampling):
 
 class ProbKnockoutSampling(Sampling):
 
-    def apply(self, iter=1, k=10, seed: int | None = None):
+    def apply(self, iter=1, k=10, min_prob=0.01, seed: int | None = None):
         '''
         In each round, randomly pair nodes which are selected probabilistically based on their ratio of wins (success rate) so far.
 
@@ -93,6 +108,7 @@ class ProbKnockoutSampling(Sampling):
         ----------
         - iter: how many iterations of ProbKnockout sampling to perform
         - k: how often each sampled pair will be compared per iteration
+        - min_prob: minimal probability of a node being selected (avoids being stuck at zero)
         - seed: seed for the random number generator
         '''
         rng = np.random.default_rng(seed=seed)
@@ -102,7 +118,7 @@ class ProbKnockoutSampling(Sampling):
             max_rate = max(rates)
             min_rate = min(rates)
             if (min_rate != max_rate):
-                normalized_success = [(node, (rate-min_rate)/(max_rate-min_rate)) for node, rate in self.G.success_rates]
+                normalized_success = [(node, max(min_prob, (rate-min_rate)/(max_rate-min_rate))) for node, rate in self.G.success_rates]
             else:
                 normalized_success = [(node, 0.5) for node in self.G.nodes] # all node get equal chance of being selected
             selected_nodes = [node for node, prob in normalized_success if rng.binomial(1,prob)]
