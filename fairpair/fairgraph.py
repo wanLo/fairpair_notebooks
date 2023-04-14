@@ -98,40 +98,50 @@ class FairPairGraph(nx.DiGraph):
         self.add_edge(j, i, **edge_j_i)
 
 
-    @cached_property
+    @property
     def minority(self, attr="minority") -> nx.Graph:
         '''Returns a read-only graph view of the minority subgraph, see nx.subgraph_view'''
         return nx.graphviews.subgraph_view(self, filter_node=lambda x: x in self.minority_nodes)
 
 
-    @cached_property
+    @property
     def minority_nodes(self, attr="minority") -> list:
         '''Returns a list of minority nodes'''
         # TODO: implement this using nx.classes.reportviews.NodeView
         return [x for x,y in self.nodes(data=attr) if y]
 
 
-    @cached_property
+    @property
     def majority(self, attr="minority") -> nx.Graph:
         '''Returns a read-only graph view of the majority subgraph, see nx.subgraph_view'''
         return nx.graphviews.subgraph_view(self, filter_node=lambda x: x in self.majority_nodes)
 
 
-    @cached_property
+    @property
     def majority_nodes(self, attr="minority") -> list:
         '''Returns a list of minority nodes'''
         # TODO: implement this using nx.classes.reportviews.NodeView
         return [x for x,y in self.nodes(data=attr) if not y]
     
-    @cached_property
+    @property
     def success_rates(self, attr="wins") -> List[tuple]:
         '''Returns a list of all nodes and their success rates'''
-        wins = []
+        rates = []
         for node in self.nodes:
             node_wins = sum([edge[2][attr] for edge in self.in_edges(node, data=True)])
             node_losses = sum([edge[2][attr] for edge in self.out_edges(node, data=True)])
             node_comparisons = node_wins + node_losses
-            if node_comparisons == 0: success = 1/len(self.nodes)
-            else: success = node_wins/node_comparisons
-            wins.append((node, success))
-        return wins
+            success = (node_wins/node_comparisons if node_comparisons != 0 else 0)
+            rates.append((node, success))
+        return rates
+    
+    @property
+    def comparisons(self, attr="wins") -> List[tuple]:
+        '''Returns a list of all nodes and how often they have been compared'''
+        compared = []
+        for node in self.nodes:
+            node_wins = sum([edge[2][attr] for edge in self.in_edges(node, data=True)])
+            node_losses = sum([edge[2][attr] for edge in self.out_edges(node, data=True)])
+            node_comparisons = node_wins + node_losses
+            compared.append((node, node_comparisons))
+        return compared

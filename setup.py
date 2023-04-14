@@ -10,7 +10,8 @@ setup(
     install_requires=[
         'pandas>=1.5.3',
         'numpy>=1.24.1',
-        'networkx>=3.0'
+        'networkx>=3.0',
+        'seaborn>=0.12.2'
     ],
     python_requires='>=3.11'
 )
