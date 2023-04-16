@@ -64,15 +64,15 @@ class Sampling:
 
     def plot_comparisons_over_time(self):
         '''Plots the #comparisons for each node over time, colored by group membership'''
-        self._plot_over_time(data=self.comparisons_over_time, y='comparisons')
+        self._plot_over_time(data=self.comparisons_over_time, y='comparisons', units='node', estimator=None)
     
     def plot_success_over_time(self):
         '''Plots the success rate for each node over time, colored by group membership'''
         self._plot_over_time(data=self.success_over_time, y='success')
     
-    def _plot_over_time(self, data:pd.DataFrame, y:str):
+    def _plot_over_time(self, data:pd.DataFrame, y:str, **kwargs):
         '''A helper for plotting stats over time'''
-        ax = sns.lineplot(data=data, x='iteration', y=y, hue='minority', units='node', estimator=None)
+        ax = sns.lineplot(data=data, x='iteration', y=y, hue='minority', **kwargs)
         ax.legend(ax.get_legend().legendHandles, ['Majority', 'Minority'], title=None, frameon=False)
         plt.setp(ax.lines, alpha=0.3)
         sns.despine()
