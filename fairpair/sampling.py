@@ -32,6 +32,8 @@ class Sampling:
         ----------
         - G: the FairPairGraph this Sampling will be applied to
         - split_using: a function that splits lists into disjoint pairs
+        - log_comparisons: whether to log #comparisons per node after each iteration
+        - log_success: whether to log the success rate of each node after each iteration
         - warn: whether to throw warnings
         '''
         self.G = G
