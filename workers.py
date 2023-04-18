@@ -8,8 +8,8 @@ def get_representation(trial:int, N=500, Nm=100):
     H.generate_groups(N, Nm)
     H.group_assign_scores(nodes=H.majority_nodes, distr=Distributions.normal_distr)
     H.group_assign_scores(nodes=H.minority_nodes, distr=Distributions.normal_distr, loc=0.3, scale=0.2) # give a disadvantage to the minority
-    for j in range(500):
-        sampler = ProbKnockoutSampling(H, warn=False)
+    for j in range(75):
+        sampler = GroupKnockoutSampling(H, warn=False)
         sampler.apply(iter=1, k=1)
         connected_nodes = max(nx.strongly_connected_components(H), key=len)
         contained.append((trial, j, len([n for n in connected_nodes if n in H.minority_nodes])/Nm, 'Minority'))

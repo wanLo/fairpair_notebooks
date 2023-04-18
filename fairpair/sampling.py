@@ -83,7 +83,7 @@ class Sampling:
 
 class RandomSampling(Sampling):
 
-    def apply(self, iter=1, k=10, p=0.4, seed: int | None = None):
+    def apply(self, iter=1, k=10, f=0.3, seed: int | None = None):
         '''
         Apply random sampling with uniform probability
 
@@ -91,18 +91,20 @@ class RandomSampling(Sampling):
         ----------
         - iter: how many iterations of random sampling to perform
         - k: how often each sampled pair will be compared per iteration
-        - p: probability of a node to be selected for comparison
+        - f: fraction of nodes to sample in each iteration
         - seed: seed for the random number generator
         '''
+        n = int(len(self.G)*f) # how many nodes to sample
         rng = np.random.default_rng(seed=seed)
         for iteration in range(iter):
-            selected_nodes = [node for node in self.G.nodes if rng.binomial(1,p)]
+            #selected_nodes = [node for node in self.G.nodes if rng.binomial(1,p)]
+            selected_nodes = rng.choice(self.G.nodes, n, replace=False)
             self._split_and_compare(selected_nodes, k, iteration, seed)
 
 
 class ProbKnockoutSampling(Sampling):
 
-    def apply(self, iter=1, k=10, min_prob=0.01, seed: int | None = None):
+    def apply(self, iter=1, k=10, f=0.3, min_prob=0.001, seed: int | None = None):
         '''
         Select nodes probabilistically based on their ratio of wins (success rate) so far.
 
@@ -110,9 +112,11 @@ class ProbKnockoutSampling(Sampling):
         ----------
         - iter: how many iterations of ProbKnockout sampling to perform
         - k: how often each sampled pair will be compared per iteration
+        - f: fraction of nodes to sample in each iteration
         - min_prob: minimal probability of a node being selected (avoids being stuck at zero)
         - seed: seed for the random number generator
         '''
+        n = int(len(self.G)*f) # how many nodes to sample
         rng = np.random.default_rng(seed=seed)
         for iteration in range(iter):
             rates = [rate for _, rate in self.G.success_rates]
@@ -120,16 +124,19 @@ class ProbKnockoutSampling(Sampling):
             max_rate = max(rates)
             min_rate = min(rates)
             if (min_rate != max_rate):
-                normalized_success = [(node, max(min_prob, (rate-min_rate)/(max_rate-min_rate))) for node, rate in self.G.success_rates]
+                normalized_rates = [max(min_prob, (rate-min_rate)/(max_rate-min_rate)) for rate in rates] # must be in (min_prob, 1)
+                normalized_rates = [rate/sum(normalized_rates) for rate in normalized_rates] # must sum to 1
+                selected_nodes = rng.choice(self.G.nodes, n, replace=False, p=normalized_rates)
             else:
-                normalized_success = [(node, 0.5) for node in self.G.nodes] # all node get equal chance of being selected
-            selected_nodes = [node for node, prob in normalized_success if rng.binomial(1,prob)]
+                # all node get equal chance of being selected
+                selected_nodes = rng.choice(self.G.nodes, n, replace=False)
+            #selected_nodes = [node for node, prob in normalized_success if rng.binomial(1,prob)]
             self._split_and_compare(selected_nodes, k, iteration, seed)
 
 
 class GroupKnockoutSampling(Sampling):
 
-    def apply(self, iter=1, k=10, seed: int | None = None):
+    def apply(self, iter=1, k=10, f=0.3, seed: int | None = None):
         '''
         Select nodes probabilistically based on the highest ratio of wins (success rate) in their group (role models) so far.
 
@@ -137,8 +144,10 @@ class GroupKnockoutSampling(Sampling):
         ----------
         - iter: how many iterations of ProbKnockout sampling to perform
         - k: how often each sampled pair will be compared per iteration
+        - f: fraction of nodes to sample in each iteration
         - seed: seed for the random number generator
         '''
+        n = int(len(self.G)*f) # how many nodes to sample
         rng = np.random.default_rng(seed=seed)
         for iteration in range(iter):
             # success rates per group
@@ -154,16 +163,19 @@ class GroupKnockoutSampling(Sampling):
                 # normalized success rates per group membership
                 minority_rate = (minority_rate-min_rate)/(max_rate-min_rate)
                 majority_rate = (majority_rate-min_rate)/(max_rate-min_rate)
-                normalized_success = [(node, minority_rate) if node in self.G.minority_nodes else (node, majority_rate) for node in self.G.nodes]
+                normalized_rates = [minority_rate if node in self.G.minority_nodes else majority_rate for node in self.G.nodes]
+                normalized_rates = [rate/sum(normalized_rates) for rate in normalized_rates] # must sum to 1
+                selected_nodes = rng.choice(self.G.nodes, n, replace=False, p=normalized_rates)
             else:
-                normalized_success = [(node, 0.5) for node in self.G.nodes] # all node get equal chance of being selected
-            selected_nodes = [node for node, prob in normalized_success if rng.binomial(1,prob)]
+                # all node get equal chance of being selected
+                selected_nodes = rng.choice(self.G.nodes, n, replace=False)
+            #selected_nodes = [node for node, prob in normalized_success if rng.binomial(1,prob)]
             self._split_and_compare(selected_nodes, k, iteration, seed)
 
 
 class OversampleMinority(Sampling):
 
-    def apply(self, iter=1, k=10, n=10, p=0.5, seed: int | None = None):
+    def apply(self, iter=1, k=10, f=0.3, p=0.5, seed: int | None = None):
         '''
         Select n nodes randomly, with a share of p nodes from the minority
 
@@ -171,14 +183,15 @@ class OversampleMinority(Sampling):
         ----------
         - iter: how many iterations of ProbKnockout sampling to perform
         - k: how often each sampled pair will be compared per iteration
-        - n: how many nodes to sample in each iteration
+        - f: fraction of nodes to sample in each iteration
         - p: share (from n) of minority nodes to be selected for comparison
         - seed: seed for the random number generator
         '''
+        n = int(len(self.G)*f) # how many nodes to sample
         rng = np.random.default_rng(seed=seed)
         for iteration in range(iter):
             #from_minority = rng.binomial(n,p) # how many nodes will come from the minority
-            from_minority = int(np.ceil(n*p))
+            from_minority = int(np.ceil(len(self.G)*f*p))
             selected_minority = rng.choice(self.G.minority_nodes, from_minority, replace=False)
             selected_majority = rng.choice(self.G.majority_nodes, n-from_minority, replace=False)
             selected_nodes = np.concatenate((selected_minority, selected_majority))
