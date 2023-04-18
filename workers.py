@@ -29,6 +29,6 @@ def get_accuracy(trial:int, N=500, Nm=100):
         # apply davidScore for ranking recovery
         ranker = RankRecovery(H)
         ranking, other_nodes = ranker.apply(rank_using=davidScore) # by default, apply rankCentrality method
-        accuracy.append((trial, j, ranker.calc_MSE(H.majority, ranking), 'Majority'))
-        accuracy.append((trial, j, ranker.calc_MSE(H.minority, ranking), 'Minority'))
+        accuracy.append((trial, j, ranker.calc_rank_MSE(H.majority, ranking), 'Majority'))
+        accuracy.append((trial, j, ranker.calc_rank_MSE(H.minority, ranking), 'Minority'))
     return accuracy
