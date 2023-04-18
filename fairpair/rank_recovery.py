@@ -125,7 +125,7 @@ class RankRecovery:
     
 
     def _extract_ranks(self, subgraph:FairPairGraph, ranking:dict) -> Tuple[list, list]:
-        '''A helper to extract ranks (true, predicted from ranking) nodes in a subgraph'''
+        '''A helper to extract ranks (true + predicted from ranking) from nodes in a subgraph'''
         # convert to ranks
         ranking = RankRecovery.scores_to_rank(ranking)
         base_scores = {node: score for node, score in self.G.nodes(data=self.score_attr)}
