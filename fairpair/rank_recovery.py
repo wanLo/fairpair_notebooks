@@ -105,7 +105,9 @@ class RankRecovery:
         scores_predicted = [ranking[node] for node in subgraph.nodes if node in ranking]
         # normalize to (0,1) to compare to true scores
         scaler = MinMaxScaler().fit([[score] for score in list(ranking.values())]) # shape: (n_samples, n_features=1)
-        scores_predicted = scaler.transform([[score] for score in scores_predicted])
+        if len(scores_predicted)>0:
+            scores_predicted = scaler.transform([[score] for score in scores_predicted])
+        else: return None
         # extract true scores for the nodes
         scores_true = [score for node, score in subgraph.nodes(data=self.score_attr) if node in ranking]
         return mean_squared_error(scores_true, scores_predicted.flatten())
