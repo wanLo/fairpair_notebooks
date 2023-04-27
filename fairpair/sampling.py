@@ -196,3 +196,42 @@ class OversampleMinority(Sampling):
             selected_majority = rng.choice(self.G.majority_nodes, n-from_minority, replace=False)
             selected_nodes = np.concatenate((selected_minority, selected_majority))
             self._split_and_compare(selected_nodes, k, iteration, seed)
+
+
+class StargraphSampling(Sampling):
+
+    def apply(self, iter=1, k=10, f=0.3, node: object = 0, node_prob: float | None = 1.0, seed: int | None = None):
+        '''
+        Select edges randomly, but for each pair, a designated `node` has a higher chance of being selected.
+        In the default case of `node_prob=1.0`, this creates a star graph.
+        The lower `node_prob`, the closer the graph is to a random graph.
+
+        Parameters
+        ----------
+        - iter: how many iterations of ProbKnockout sampling to perform
+        - k: how often each sampled pair will be compared per iteration
+        - f: fraction of nodes to sample in each iteration
+        - node: identifier of the designated node
+        - node_prob: probability of selecting the designated node for comparison.
+            Set `node_prob=None` to give the designated node the same chance as all other nodes.
+        - seed: seed for the random number generator
+        '''
+        n = int(len(self.G)*f) # how many nodes to sample
+        rng = np.random.default_rng(seed=seed)
+        if node_prob is not None:
+            others_prob = (1-node_prob)/(len(self.G)-1) # probability for other nodes to be selected for comparison
+            probs = [node_prob if n==node else others_prob for n in self.G.nodes]
+        for iteration in range(iter): 
+            pairs = []
+            for i in range(n//2): # number of pairs to create
+                first_node = second_node = None
+                while first_node == second_node: # no self-loops
+                    if node_prob >= 1: first_node = node # always connect to the center
+                    elif node_prob is None: first_node = rng.choice(self.G.nodes, size=1)[0] # with replacement since size=1
+                    else: first_node = rng.choice(self.G.nodes, size=1, p=probs)[0] # different prob. for designated node
+                    second_node = rng.choice(self.G.nodes, size=1)[0]
+                    # don't compare the same pair multiple times per iteration
+                    if ((first_node, second_node) in pairs or (second_node, first_node) in pairs):
+                        first_node = second_node = None
+                    else: pairs.append((first_node, second_node))
+                self.G.compare_pair(first_node, second_node, k, seed=seed)

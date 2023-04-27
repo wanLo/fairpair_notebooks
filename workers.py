@@ -36,3 +36,22 @@ def get_accuracy(trial:int, N=500, Nm=100):
         accuracy.append((trial, j, ranker.calc_MSE(H.majority, ranking), 'Majority'))
         accuracy.append((trial, j, ranker.calc_MSE(H.minority, ranking), 'Minority'))
     return accuracy
+
+
+def get_star_graph(trial, stariness, N=500, Nm=0):
+    accuracy = []
+    connected = False
+    H = FairPairGraph()
+    H.generate_groups(N, Nm)
+    H.group_assign_scores(nodes=H.nodes, distr=Distributions.normal_distr)
+    sampler = StargraphSampling(H, warn=False)
+    ranker = RankRecovery(H)
+    for j in range(75):
+        sampler.apply(iter=1, k=1, node_prob=stariness)
+        # apply davidScore for ranking recovery
+        ranking, other_nodes = ranker.apply(rank_using=davidScore) # by default, apply rankCentrality method
+        if len(other_nodes) == 0 and not connected:
+            print(f'Strongly connected after {j} iterations.')
+            connected = True
+        accuracy.append((trial, stariness, j, ranker.calc_MSE(H, ranking)))
+    return accuracy
