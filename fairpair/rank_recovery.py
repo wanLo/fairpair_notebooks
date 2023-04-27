@@ -165,3 +165,8 @@ class RankRecovery:
         ranks_true, ranks_predicted = self._extract_ranks(subgraph, ranking)
         if len(ranks_true) == 0 or len(ranks_predicted) == 0: return None
         return mean_squared_error(ranks_true, ranks_predicted)
+    
+    def calc_rND(self, subgraph:FairPairGraph, ranking:dict) -> float:
+        '''
+        Calculates the rND score
+        '''
