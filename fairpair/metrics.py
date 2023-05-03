@@ -128,8 +128,45 @@ def spearmanr(graph:FairPairGraph, ranking:dict, subgraph:FairPairGraph | None =
 
     # This doesn't work, because it also converts to ranks first
     #return stats.spearmanr(ranks_true, ranks_predicted)
-    
+
     return stats.pearsonr(ranks_true, ranks_predicted)
+
+
+def weighted_tau(graph:FairPairGraph, ranking:dict, subgraph:FairPairGraph | None = None, use_weights=True, score_attr='score') -> float:
+    '''
+    Calculates weighted Kendall tau for a `ranking` given the
+    "ground-truth" ranking from initial scores of `graph`.
+    See Negahban et al. (2012) for the implementation irrespective of groups.
+
+    Parameters
+    ----------
+    - graph: the full FairPairGraph for ground-truth ranks
+    - ranking: dict of nodes and their ranking results
+    - subgraph: a FairPairGraph subgraph of `graph`, or identical to `graph` if None
+    - use_weights: if False, calculate non-weighted Kendall tau
+    - score_attr: name of the node attribute for storing scores
+    '''
+    if subgraph is None: subgraph = graph
+    ranks_true, ranks_predicted = _extract_ranks(graph, ranking, subgraph)
+    if len(ranks_true) == 0 or len(ranks_predicted) == 0: return None
+
+    # get rankings as dicts
+    ranking = scores_to_rank(ranking)
+    base_scores = {node: score for node, score in graph.nodes(data=score_attr)}
+
+    # sum up weights of discordant pairs
+    n_pairs = 0
+    discordant_sum = 0
+    for i in graph.nodes:
+        for j in list(graph.nodes)[:i]: # till before the diagonal
+            if i in subgraph or j in subgraph:
+                n_pairs += 1
+                if (base_scores[i]-base_scores[j])*(ranking[i]-ranking[j]) > 0:
+                    discordant_sum += (base_scores[i]-base_scores[j]) ** 2
+    normed_weights = np.linalg.norm([weight for _, weight in subgraph.nodes(data=score_attr)]) # Eucledian norm of subgraph weights
+    tau = discordant_sum / (2 * n_pairs * (normed_weights ** 2))
+    #print(n_pairs, len(subgraph), len(graph), discordant_sum, normed_weights)
+    return tau ** 0.5
 
 
 ##### Group-Representation #####

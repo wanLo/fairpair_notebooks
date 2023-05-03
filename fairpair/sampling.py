@@ -143,7 +143,7 @@ class GroupKnockoutSampling(Sampling):
 
         Parameters
         ----------
-        - iter: how many iterations of ProbKnockout sampling to perform
+        - iter: how many iterations of GroupKnockout sampling to perform
         - k: how often each sampled pair will be compared per iteration
         - f: fraction of nodes to sample in each iteration
         - seed: seed for the random number generator
@@ -182,7 +182,7 @@ class OversampleMinority(Sampling):
 
         Parameters
         ----------
-        - iter: how many iterations of ProbKnockout sampling to perform
+        - iter: how many iterations of minority oversampling to perform
         - k: how often each sampled pair will be compared per iteration
         - f: fraction of nodes to sample in each iteration
         - p: share (from n) of minority nodes to be selected for comparison
@@ -209,7 +209,7 @@ class StargraphSampling(Sampling):
 
         Parameters
         ----------
-        - iter: how many iterations of ProbKnockout sampling to perform
+        - iter: how many iterations of Stargraph sampling to perform
         - k: how often each sampled pair will be compared per iteration
         - f: fraction of nodes to sample in each iteration
         - node: identifier of the designated node
