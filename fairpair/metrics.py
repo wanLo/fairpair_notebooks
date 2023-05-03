@@ -4,6 +4,8 @@ import numpy as np
 from sklearn.metrics import ndcg_score, mean_squared_error
 from sklearn.preprocessing import MinMaxScaler
 from scipy import stats
+import networkx as nx
+import pandas as pd
 
 from .fairgraph import FairPairGraph
 
@@ -132,7 +134,7 @@ def spearmanr(graph:FairPairGraph, ranking:dict, subgraph:FairPairGraph | None =
     return stats.pearsonr(ranks_true, ranks_predicted)
 
 
-def weighted_tau(graph:FairPairGraph, ranking:dict, subgraph:FairPairGraph | None = None, use_weights=True, score_attr='score') -> float:
+def weighted_tau(graph:FairPairGraph, ranking:dict, subgraph:FairPairGraph | None = None, score_attr='score') -> float:
     '''
     Calculates weighted Kendall tau for a `ranking` given the
     "ground-truth" ranking from initial scores of `graph`.
@@ -143,12 +145,9 @@ def weighted_tau(graph:FairPairGraph, ranking:dict, subgraph:FairPairGraph | Non
     - graph: the full FairPairGraph for ground-truth ranks
     - ranking: dict of nodes and their ranking results
     - subgraph: a FairPairGraph subgraph of `graph`, or identical to `graph` if None
-    - use_weights: if False, calculate non-weighted Kendall tau
     - score_attr: name of the node attribute for storing scores
     '''
     if subgraph is None: subgraph = graph
-    ranks_true, ranks_predicted = _extract_ranks(graph, ranking, subgraph)
-    if len(ranks_true) == 0 or len(ranks_predicted) == 0: return None
 
     # get rankings as dicts
     ranking = scores_to_rank(ranking)
@@ -157,16 +156,21 @@ def weighted_tau(graph:FairPairGraph, ranking:dict, subgraph:FairPairGraph | Non
     # sum up weights of discordant pairs
     n_pairs = 0
     discordant_sum = 0
-    for i in graph.nodes:
-        for j in list(graph.nodes)[:i]: # till before the diagonal
-            if i in subgraph or j in subgraph:
-                n_pairs += 1
-                if (base_scores[i]-base_scores[j])*(ranking[i]-ranking[j]) > 0:
-                    discordant_sum += (base_scores[i]-base_scores[j]) ** 2
-    normed_weights = np.linalg.norm([weight for _, weight in subgraph.nodes(data=score_attr)]) # Eucledian norm of subgraph weights
-    tau = discordant_sum / (2 * n_pairs * (normed_weights ** 2))
-    #print(n_pairs, len(subgraph), len(graph), discordant_sum, normed_weights)
-    return tau ** 0.5
+    subgraph_nodes = list(subgraph.nodes) # must faster to do this only once
+    complementary_nodes = [node for node in graph.nodes if node not in subgraph.nodes]
+    for i in subgraph_nodes:
+        # consider within-group pairs till before the diagonal
+        # and pairs with complementary nodes only one-way
+        for j in subgraph_nodes[:i] + complementary_nodes:
+            n_pairs += 1
+            if (base_scores[i]-base_scores[j])*(ranking[i]-ranking[j]) > 0:
+                discordant_sum += (base_scores[i]-base_scores[j]) ** 2
+    
+    # Eucledian norm of subgraph weights
+    # TODO: How to incorporate pairs with complementary nodes?
+    normed_weights = np.linalg.norm([weight for _, weight in subgraph.nodes(data=score_attr)])
+
+    return (discordant_sum / (2 * n_pairs * (normed_weights ** 2))) ** 0.5
 
 
 ##### Group-Representation #####
