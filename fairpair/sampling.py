@@ -124,7 +124,8 @@ class ProbKnockoutSampling(Sampling):
             max_rate = max(rates)
             min_rate = min(rates)
             if (min_rate != max_rate):
-                normalized_rates = [max(min_prob, (rate-min_rate)/(max_rate-min_rate)) for rate in rates] # must be in (min_prob, 1)
+                #normalized_rates = [max(min_prob, (rate-min_rate)/(max_rate-min_rate)) for rate in rates] # must be in (min_prob, 1)
+                normalized_rates = [(rate-min_rate)/(max_rate-min_rate)*(1-min_prob)+min_prob for rate in rates] # min-max scaler
                 normalized_rates = [rate/sum(normalized_rates) for rate in normalized_rates] # must sum to 1
                 selected_nodes = rng.choice(self.G.nodes, n, replace=False, p=normalized_rates)
             else:
@@ -219,7 +220,7 @@ class StargraphSampling(Sampling):
         n = int(len(self.G)*f) # how many nodes to sample
         rng = np.random.default_rng(seed=seed)
         if node_prob is not None:
-            others_prob = (1-node_prob)/(len(self.G)-1) # probability for other nodes to be selected for comparison
+            others_prob = float(1-node_prob)/float(len(self.G)-1) # probability for other nodes to be selected for comparison
             probs = [node_prob if n==node else others_prob for n in self.G.nodes]
         for iteration in range(iter): 
             pairs = []
