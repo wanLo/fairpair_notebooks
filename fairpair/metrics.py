@@ -156,6 +156,7 @@ def weighted_tau(graph:FairPairGraph, ranking:dict, subgraph:FairPairGraph | Non
     # sum up weights of discordant pairs
     n_pairs = 0
     discordant_sum = 0
+    worst_case_sum = 0
     subgraph_nodes = list(subgraph.nodes) # must faster to do this only once
     complementary_nodes = [node for node in graph.nodes if node not in subgraph.nodes]
     for i in subgraph_nodes:
@@ -163,14 +164,18 @@ def weighted_tau(graph:FairPairGraph, ranking:dict, subgraph:FairPairGraph | Non
         # and pairs with complementary nodes only one-way
         for j in subgraph_nodes[:i] + complementary_nodes:
             n_pairs += 1
+            diff = (base_scores[i]-base_scores[j]) ** 2
+            worst_case_sum += diff
             if (base_scores[i]-base_scores[j])*(ranking[i]-ranking[j]) > 0:
-                discordant_sum += (base_scores[i]-base_scores[j]) ** 2
+                discordant_sum += diff
     
-    # Eucledian norm of subgraph weights
-    # TODO: How to incorporate pairs with complementary nodes?
-    normed_weights = np.linalg.norm([weight for _, weight in subgraph.nodes(data=score_attr)])
-
-    return (discordant_sum / (2 * n_pairs * (normed_weights ** 2))) ** 0.5
+    # The original formula uses Eucledian norm of weights for normalization.
+    # But this is not compatible with subgraphs and yields a weird result range.
+    # normed_weights = np.linalg.norm([weight for _, weight in subgraph.nodes(data=score_attr)])
+    # return (discordant_sum / (2 * n_pairs * (normed_weights ** 2))) ** 0.5
+    
+    # We use a worst-case sum (all pairs are discordant) for normalization instead
+    return (discordant_sum / worst_case_sum) ** 0.5
 
 
 ##### Group-Representation #####
