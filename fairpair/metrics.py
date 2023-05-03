@@ -3,14 +3,14 @@ from typing import Tuple
 import numpy as np
 from sklearn.metrics import ndcg_score, mean_squared_error
 from sklearn.preprocessing import MinMaxScaler
-from scipy.stats import rankdata
+from scipy import stats
 
 from .fairgraph import FairPairGraph
 
 def scores_to_rank(ranking:dict) -> dict:
     '''A helper to convert a ranking from scores to ranks'''
     # convert ranking from {node:score} dict to [(node, rank)] list
-    rank_data = rankdata(list(ranking.values()))
+    rank_data = stats.rankdata(list(ranking.values()))
     rank_data = [int(max(rank_data) - rank) for rank in rank_data] # we want 0 to be the highest rank
     ranks = zip(list(ranking.keys()), rank_data)
     # convert to {node:rank} dict
@@ -23,7 +23,7 @@ def scores_to_rank(ranking:dict) -> dict:
 def NDCG(subgraph:FairPairGraph, ranking:dict, score_attr='score', **kwargs) -> float:
     '''
     Calculates the normalized discounted cumulative gain (NDCG)
-    for a ranking given initial scores from subgraph
+    for a `ranking` given initial scores from `subgraph`
 
     Parameters
     ----------
@@ -43,8 +43,8 @@ def NDCG(subgraph:FairPairGraph, ranking:dict, score_attr='score', **kwargs) -> 
 
 def MSE(subgraph:FairPairGraph, ranking:dict, score_attr='score') -> float:
     '''
-    Calculates the mean square error (MSE) for a ranking
-    (scores normalized to (0,1)) given initial scores from subgraph
+    Calculates the mean square error (MSE) for scores from `ranking`,
+    normalized to (0,1), given initial scores from `subgraph`.
 
     Parameters
     ----------
@@ -79,7 +79,7 @@ def _extract_ranks(graph:FairPairGraph, ranking:dict, subgraph:FairPairGraph | N
 def rank_mean_error(graph:FairPairGraph, ranking:dict, subgraph:FairPairGraph | None = None) -> float:
     '''
     Calculates the mean error for a ranking given the
-    "ground-truth" ranking from initial scores of `graph`
+    "ground-truth" ranking from initial scores of `graph`.
 
     Parameters
     ----------
@@ -97,7 +97,7 @@ def rank_mean_error(graph:FairPairGraph, ranking:dict, subgraph:FairPairGraph | 
 def rank_MSE(graph:FairPairGraph, ranking:dict, subgraph:FairPairGraph | None = None) -> float:
     '''
     Calculates the mean squared error (MSE) for a ranking given the
-    "ground-truth" ranking from initial scores of `graph`
+    "ground-truth" ranking from initial scores of `graph`.
 
     Parameters
     ----------
@@ -109,6 +109,27 @@ def rank_MSE(graph:FairPairGraph, ranking:dict, subgraph:FairPairGraph | None = 
     ranks_true, ranks_predicted = _extract_ranks(graph, ranking, subgraph)
     if len(ranks_true) == 0 or len(ranks_predicted) == 0: return None
     return mean_squared_error(ranks_true, ranks_predicted)
+
+
+def spearmanr(graph:FairPairGraph, ranking:dict, subgraph:FairPairGraph | None = None) -> float:
+    '''
+    Calculates Spearman's correlation coefficient for a `ranking` given the
+    "ground-truth" ranking from initial scores of `graph`.
+
+    Parameters
+    ----------
+    - graph: the full FairPairGraph for ground-truth ranks
+    - ranking: dict of nodes and their ranking results
+    - subgraph: a FairPairGraph subgraph of `graph`, or identical to `graph` if None
+    '''
+    if subgraph is None: subgraph = graph
+    ranks_true, ranks_predicted = _extract_ranks(graph, ranking, subgraph)
+    if len(ranks_true) == 0 or len(ranks_predicted) == 0: return None
+
+    # This doesn't work, because it also converts to ranks first
+    #return stats.spearmanr(ranks_true, ranks_predicted)
+    
+    return stats.pearsonr(ranks_true, ranks_predicted)
 
 
 ##### Group-Representation #####
