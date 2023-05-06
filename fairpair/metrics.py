@@ -138,7 +138,7 @@ def weighted_tau(graph:FairPairGraph, ranking:dict, subgraph:FairPairGraph | Non
     '''
     Calculates weighted Kendall tau for a `ranking` given the
     "ground-truth" ranking from initial scores of `graph`.
-    See Negahban et al. (2012) for the implementation irrespective of groups.
+    Adapted from Negahban et al. (2012)'s version of weighted Kendall tau.
 
     Parameters
     ----------
@@ -154,7 +154,6 @@ def weighted_tau(graph:FairPairGraph, ranking:dict, subgraph:FairPairGraph | Non
     base_scores = {node: score for node, score in graph.nodes(data=score_attr)}
 
     # sum up weights of discordant pairs
-    n_pairs = 0
     discordant_sum = 0
     worst_case_sum = 0
     subgraph_nodes = list(subgraph.nodes) # must faster to do this only once
@@ -163,7 +162,6 @@ def weighted_tau(graph:FairPairGraph, ranking:dict, subgraph:FairPairGraph | Non
         # consider within-group pairs till before the diagonal
         # and pairs with complementary nodes only one-way
         for j in subgraph_nodes[:i] + complementary_nodes:
-            n_pairs += 1
             diff = (base_scores[i]-base_scores[j]) ** 2
             worst_case_sum += diff
             if (base_scores[i]-base_scores[j])*(ranking[i]-ranking[j]) > 0:
@@ -176,6 +174,55 @@ def weighted_tau(graph:FairPairGraph, ranking:dict, subgraph:FairPairGraph | Non
     
     # We use a worst-case sum (all pairs are discordant) for normalization instead
     return (discordant_sum / worst_case_sum) ** 0.5
+
+
+def weighted_tau_separate(graph:FairPairGraph, ranking:dict, subgraph:FairPairGraph | None = None, score_attr='score') -> Tuple[float, float]:
+    '''
+    Calculates within-group and between-group weighted Kendall tau for a `ranking` given the
+    "ground-truth" ranking from initial scores of `graph`.
+    Adapted from Negahban et al. (2012)'s version of weighted Kendall tau.
+
+    Parameters
+    ----------
+    - graph: the full FairPairGraph for ground-truth ranks
+    - ranking: dict of nodes and their ranking results
+    - subgraph: a FairPairGraph subgraph of `graph`, or identical to `graph` if None
+    - score_attr: name of the node attribute for storing scores
+    '''
+    if subgraph is None: subgraph = graph
+
+    # get rankings as dicts
+    ranking = scores_to_rank(ranking)
+    base_scores = {node: score for node, score in graph.nodes(data=score_attr)}
+
+    subgraph_nodes = list(subgraph.nodes) # must faster to do this only once
+    complementary_nodes = [node for node in graph.nodes if node not in subgraph.nodes]
+
+    # sum up weights of within-group discordant pairs
+    discordant_sum_int = 0
+    worst_case_sum_int = 0
+    for i in subgraph_nodes:
+        # consider within-group pairs till before the diagonal
+        for j in subgraph_nodes[:i]:
+            diff = (base_scores[i]-base_scores[j]) ** 2
+            worst_case_sum_int += diff
+            if (base_scores[i]-base_scores[j])*(ranking[i]-ranking[j]) > 0:
+                discordant_sum_int += diff
+
+    # sum up weights of between-group discordant pairs
+    discordant_sum_ext = 0
+    worst_case_sum_ext = 0
+    for i in subgraph_nodes:
+        # consider complementary nodes only one-way
+        for j in complementary_nodes:
+            diff = (base_scores[i]-base_scores[j]) ** 2
+            worst_case_sum_ext += diff
+            if (base_scores[i]-base_scores[j])*(ranking[i]-ranking[j]) > 0:
+                discordant_sum_ext += diff
+    
+    
+    # return both within-group and between-group
+    return (discordant_sum_int / worst_case_sum_int) ** 0.5, (discordant_sum_ext / worst_case_sum_ext) ** 0.5
 
 
 ##### Group-Representation #####
