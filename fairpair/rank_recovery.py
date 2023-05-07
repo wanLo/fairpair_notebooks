@@ -28,8 +28,7 @@ class RankRecovery:
     def apply(self, rank_using=rankCentrality, **kwargs) -> Tuple[dict, list]:
         '''
         Helper for applying a ranking function to a FairPairGraph.
-        Preserves node names and only calculates the ranking on the
-        giant strongly connected component.
+        Preserves node names and calculates the ranking only if strongly connected.
 
         Parameters
         ----------
@@ -39,20 +38,23 @@ class RankRecovery:
         Returns
         -------
         - ranking: dict of nodes and their ranking results
-        - other_nodes: list of all nodes NOT included in the ranking because they were
-          not strongly connected
+        - other_nodes: list of all nodes NOT included in giant strongly connected component
         '''
         connected_nodes = max(nx.strongly_connected_components(self.G), key=len) # get the giant connected component
         connected_graph = self.G.subgraph(connected_nodes)
         other_nodes = [node for node in self.G.nodes if node not in connected_nodes]
-        adjacency = nx.linalg.graphmatrix.adjacency_matrix(connected_graph, weight=self.weight_attr)
 
-        # The GNNRank implementation generally assumes i->j means "i beats j", while we mean the opposite
-        adjacency = adjacency.transpose()
-        
-        ranking = rank_using(adjacency, **kwargs)
-        ranking = [float(score.real) if isinstance(score, complex) else float(score) for score in ranking]
-        ranking = dict(zip(connected_nodes, ranking)) # nodes might have specific names, so we return a dict
+        if len(other_nodes) == 0: # only apply ranking recovery if strongly connected
+            adjacency = nx.linalg.graphmatrix.adjacency_matrix(connected_graph, weight=self.weight_attr)
+
+            # The GNNRank implementation generally assumes i->j means "i beats j", while we mean the opposite
+            adjacency = adjacency.transpose()
+            
+            ranking = rank_using(adjacency, **kwargs)
+            ranking = [float(abs(score)) if isinstance(score, complex) else float(score) for score in ranking]
+            ranking = dict(zip(connected_nodes, ranking)) # nodes might have specific names, so we return a dict
+        else: ranking = []
+
         return ranking, other_nodes
     
 

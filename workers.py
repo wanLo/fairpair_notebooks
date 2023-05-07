@@ -27,9 +27,9 @@ def get_accuracy(trial:int, N=500, Nm=100):
     sampler = ProbKnockoutSampling(H, warn=False)
     ranker = RankRecovery(H)
     for j in range(100):
-        sampler.apply(iter=10, k=1, min_prob=0.1)
+        sampler.apply(iter=10, k=1, min_prob=0.1) #min_prob=0.1
         # apply davidScore for ranking recovery
-        ranking, other_nodes = ranker.apply(rank_using=davidScore) # by default, apply rankCentrality method
+        ranking, other_nodes = ranker.apply() # by default, apply rankCentrality method
         if len(other_nodes) == 0:
             if not connected:
                 print(f'Strongly connected after {j*10} iterations.')
@@ -42,6 +42,11 @@ def get_accuracy(trial:int, N=500, Nm=100):
             accuracy.append((trial, j*10, tau, 'Majority'))
             tau = weighted_tau(H, ranking, H.minority)
             accuracy.append((trial, j*10, tau, 'Minority'))
+            tau = weighted_tau_separate(H, ranking, H.majority)
+            accuracy.append((trial, j*10, tau[0], 'Majority within-group'))
+            accuracy.append((trial, j*10, tau[1], 'Between groups'))
+            tau = weighted_tau_separate(H, ranking, H.minority, calc_between=False)
+            accuracy.append((trial, j*10, tau[0], 'Minority within-group'))
     return accuracy
 
 

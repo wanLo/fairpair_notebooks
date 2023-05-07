@@ -83,7 +83,7 @@ class Sampling:
 
 class RandomSampling(Sampling):
 
-    def apply(self, iter=1, k=10, f=0.3, seed: int | None = None):
+    def apply(self, iter=1, k=10, f=0.2, seed: int | None = None):
         '''
         Apply random sampling with uniform probability
 
@@ -104,7 +104,7 @@ class RandomSampling(Sampling):
 
 class ProbKnockoutSampling(Sampling):
 
-    def apply(self, iter=1, k=10, f=0.3, min_prob=0.001, seed: int | None = None):
+    def apply(self, iter=1, k=10, f=0.2, min_prob=0.001, seed: int | None = None):
         '''
         Select nodes probabilistically based on their ratio of wins (success rate) so far.
 
@@ -137,7 +137,7 @@ class ProbKnockoutSampling(Sampling):
 
 class GroupKnockoutSampling(Sampling):
 
-    def apply(self, iter=1, k=10, f=0.3, seed: int | None = None):
+    def apply(self, iter=1, k=10, f=0.2, seed: int | None = None):
         '''
         Select nodes probabilistically based on the highest ratio of wins (success rate) in their group (role models) so far.
 
@@ -176,7 +176,7 @@ class GroupKnockoutSampling(Sampling):
 
 class OversampleMinority(Sampling):
 
-    def apply(self, iter=1, k=10, f=0.3, p=0.5, seed: int | None = None):
+    def apply(self, iter=1, k=10, f=0.2, p=0.5, seed: int | None = None):
         '''
         Select n nodes randomly, with a share of p nodes from the minority
 
@@ -201,7 +201,7 @@ class OversampleMinority(Sampling):
 
 class StargraphSampling(Sampling):
 
-    def apply(self, iter=1, k=10, f=0.3, node: object = 0, node_prob: float | None = 1.0, seed: int | None = None):
+    def apply(self, iter=1, k=10, f=0.2, node: object = 0, node_prob: float | None = 1.0, seed: int | None = None):
         '''
         Select edges randomly, but for each pair, a designated `node` has a higher chance of being selected.
         In the default case of `node_prob=1.0`, this creates a star graph.

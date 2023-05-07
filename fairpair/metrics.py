@@ -9,11 +9,12 @@ import pandas as pd
 
 from .fairgraph import FairPairGraph
 
-def scores_to_rank(ranking:dict) -> dict:
+def scores_to_rank(ranking:dict, invert=True) -> dict:
     '''A helper to convert a ranking from scores to ranks'''
     # convert ranking from {node:score} dict to [(node, rank)] list
     rank_data = stats.rankdata(list(ranking.values()))
-    rank_data = [int(max(rank_data) - rank) for rank in rank_data] # we want 0 to be the highest rank
+    if invert:
+        rank_data = [int(max(rank_data) - rank) for rank in rank_data] # we want 0 to be the highest rank
     ranks = zip(list(ranking.keys()), rank_data)
     # convert to {node:rank} dict
     return {node: rank for node, rank in ranks}
@@ -176,7 +177,8 @@ def weighted_tau(graph:FairPairGraph, ranking:dict, subgraph:FairPairGraph | Non
     return (discordant_sum / worst_case_sum) ** 0.5
 
 
-def weighted_tau_separate(graph:FairPairGraph, ranking:dict, subgraph:FairPairGraph | None = None, score_attr='score') -> Tuple[float, float]:
+def weighted_tau_separate(graph:FairPairGraph, ranking:dict, subgraph:FairPairGraph | None = None,
+                          score_attr='score', calc_within=True, calc_between=True) -> Tuple[float, float]:
     '''
     Calculates within-group and between-group weighted Kendall tau for a `ranking` given the
     "ground-truth" ranking from initial scores of `graph`.
@@ -188,6 +190,13 @@ def weighted_tau_separate(graph:FairPairGraph, ranking:dict, subgraph:FairPairGr
     - ranking: dict of nodes and their ranking results
     - subgraph: a FairPairGraph subgraph of `graph`, or identical to `graph` if None
     - score_attr: name of the node attribute for storing scores
+    - calc_within: whether to calculate within-group tau
+    - calc_between: whether to calculate between-group tau
+
+    Returns
+    -------
+    - tau_within: within-group weighted Kendall tau
+    - tau_between: between-group weighted Kendall tau
     '''
     if subgraph is None: subgraph = graph
 
@@ -199,30 +208,34 @@ def weighted_tau_separate(graph:FairPairGraph, ranking:dict, subgraph:FairPairGr
     complementary_nodes = [node for node in graph.nodes if node not in subgraph.nodes]
 
     # sum up weights of within-group discordant pairs
-    discordant_sum_int = 0
-    worst_case_sum_int = 0
-    for i in subgraph_nodes:
-        # consider within-group pairs till before the diagonal
-        for j in subgraph_nodes[:i]:
-            diff = (base_scores[i]-base_scores[j]) ** 2
-            worst_case_sum_int += diff
-            if (base_scores[i]-base_scores[j])*(ranking[i]-ranking[j]) > 0:
-                discordant_sum_int += diff
+    if calc_within:
+        discordant_sum_int = 0
+        worst_case_sum_int = 0
+        for i in subgraph_nodes:
+            # consider within-group pairs till before the diagonal
+            for j in subgraph_nodes[:i]:
+                diff = (base_scores[i]-base_scores[j]) ** 2
+                worst_case_sum_int += diff
+                if (base_scores[i]-base_scores[j])*(ranking[i]-ranking[j]) > 0:
+                    discordant_sum_int += diff
+        tau_within = (discordant_sum_int / worst_case_sum_int) ** 0.5
+    else: tau_within = None
 
     # sum up weights of between-group discordant pairs
-    discordant_sum_ext = 0
-    worst_case_sum_ext = 0
-    for i in subgraph_nodes:
-        # consider complementary nodes only one-way
-        for j in complementary_nodes:
-            diff = (base_scores[i]-base_scores[j]) ** 2
-            worst_case_sum_ext += diff
-            if (base_scores[i]-base_scores[j])*(ranking[i]-ranking[j]) > 0:
-                discordant_sum_ext += diff
+    if calc_between:
+        discordant_sum_ext = 0
+        worst_case_sum_ext = 0
+        for i in subgraph_nodes:
+            # consider complementary nodes only one-way
+            for j in complementary_nodes:
+                diff = (base_scores[i]-base_scores[j]) ** 2
+                worst_case_sum_ext += diff
+                if (base_scores[i]-base_scores[j])*(ranking[i]-ranking[j]) > 0:
+                    discordant_sum_ext += diff
+        tau_between = (discordant_sum_ext / worst_case_sum_ext) ** 0.5
+    else: tau_between = None
     
-    
-    # return both within-group and between-group
-    return (discordant_sum_int / worst_case_sum_int) ** 0.5, (discordant_sum_ext / worst_case_sum_ext) ** 0.5
+    return tau_within, tau_between
 
 
 ##### Group-Representation #####

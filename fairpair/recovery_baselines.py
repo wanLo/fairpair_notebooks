@@ -3,8 +3,32 @@ from numpy.core.fromnumeric import transpose
 import scipy.sparse as sp
 from scipy.stats import rankdata
 from scipy.sparse.linalg import svds
-from scipy.linalg import orth
+from scipy.linalg import orth, eig
 from sklearn.preprocessing import normalize
+
+
+def matrix_rankCentrality(A, reg=1):
+    A = A.todense(order='C') # convert scipy sparse to numpy matrix
+    size = A.shape[0]
+    A += reg * (np.ones((size,size)) - np.eye(size)) # regularization
+    P = _trans_prob(A)
+    return _stationary_dist(P)
+
+def _trans_prob(A):
+    '''This function takes the matrix of comparisons, rescale by the maximum outdegree and add self loops'''
+    n = np.shape(A)[0]
+    d_max = np.max(np.count_nonzero(A,axis = 1)) #maximum out degree
+    P = A/d_max #rescale values 
+    sum_by_row = np.sum(P,axis=1)
+    for i in np.arange(0,n):
+        P[i,i] = 1 - sum_by_row[i]
+    return P
+
+def _stationary_dist(P):
+    val, vec = eig(P,left=True,right=False)
+    largest_eigenvector = vec[:, np.argmax(val)]
+    return largest_eigenvector
+
 
 #####################################################################################################
 # The code below was adapted from
@@ -150,9 +174,9 @@ def rankCentrality(A):
     
     # Note that there are no self-loops in this model, so we will check, 
     # discard, and warn 
-    A = sp.lil_matrix(A.transpose()) # Q: True?
+    A = sp.csr_matrix(A.transpose())
     A.setdiag(0)
-    A = sp.csr_matrix(A)
+    #A = sp.csr_matrix(A)
     A.eliminate_zeros()
     
     
@@ -165,28 +189,28 @@ def rankCentrality(A):
     # matrix A before we compute dmax. 
     regularization = 1
     A = sp.csr_matrix(A.toarray() + regularization)
-    
+
     # Find dmax
     dout = A.sum(1)
     dmax = max(dout)
-    
+
     # Eq 5
     
-    P = sp.lil_matrix(A/(A+A.transpose())/dmax)
+    #P = sp.lil_matrix(A/dmax)
+    #P = sp.lil_matrix(A/(A+A.transpose())/dmax)
     
     # But we need to make sure that the matrix remains stochastic by making the
     # rows sum to 1. Without regularization, Eq 1 says P(i,i) = 1 - dout(i)/dmax;
     # Instead, we're going to just do this "manually"
     
-    P = sp.csr_matrix(A)
+    P = sp.csr_matrix(A/dmax)
     P.eliminate_zeros()
     D = sp.diags(np.array(1 - P.sum(1)).flatten())
     P = P + D
 
-    
     _, V = sp.linalg.eigs(P.transpose(),1, which='LM')
     
-    rc = V.flatten() / V.sum()
+    rc = V.flatten()
     
     return rc
 
