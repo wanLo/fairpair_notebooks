@@ -1,3 +1,5 @@
+import warnings
+
 import numpy as np
 from numpy.core.fromnumeric import transpose
 import scipy.sparse as sp
@@ -171,6 +173,8 @@ def rankCentrality(A):
     # In the SpringRank paper, we usually assume the opposite. 
     # Here, we'll use the authors' direction, but note that whenever we call
     # this code, we'll have to transpose A. 
+
+    warnings.simplefilter('ignore', sp.SparseEfficiencyWarning)
     
     # Note that there are no self-loops in this model, so we will check, 
     # discard, and warn 
@@ -211,6 +215,8 @@ def rankCentrality(A):
     _, V = sp.linalg.eigs(P.transpose(),1, which='LM')
     
     rc = V.flatten()
+
+    warnings.simplefilter('default', sp.SparseEfficiencyWarning)
     
     return rc
 
