@@ -12,7 +12,7 @@ from .fairgraph import FairPairGraph
 def scores_to_rank(ranking:dict, invert=True) -> dict:
     '''A helper to convert a ranking from scores to ranks'''
     # convert ranking from {node:score} dict to [(node, rank)] list
-    rank_data = stats.rankdata(list(ranking.values()))
+    rank_data = stats.rankdata(list(ranking.values()), method='ordinal') # use ordinal method to avoid same rank for ties
     if invert:
         rank_data = [int(max(rank_data) - rank) for rank in rank_data] # we want 0 to be the highest rank
     ranks = zip(list(ranking.keys()), rank_data)
@@ -236,6 +236,43 @@ def weighted_tau_separate(graph:FairPairGraph, ranking:dict, subgraph:FairPairGr
     else: tau_between = None
     
     return tau_within, tau_between
+
+
+def weighted_individual_tau(graph:FairPairGraph, ranking:dict, subgraph:FairPairGraph | None = None, score_attr='score') -> list[float]:
+    '''
+    Calculates weighted Kendall tau for each node in a `ranking` separately,
+    given the "ground-truth" ranking from initial scores of `graph`.
+
+    Parameters
+    ----------
+    - graph: the full FairPairGraph for ground-truth ranks
+    - ranking: dict of nodes and their ranking results
+    - subgraph: a FairPairGraph subgraph of `graph`, or identical to `graph` if None
+    - score_attr: name of the node attribute for storing scores
+    '''
+    if subgraph is None: subgraph = graph
+
+    # get rankings as dicts
+    ranking = scores_to_rank(ranking)
+    base_scores = {node: score for node, score in graph.nodes(data=score_attr)}
+
+    # sum up weights of discordant pairs
+    tau = []
+    subgraph_nodes = [node for node, _ in sorted([(node, ranking[node]) for node in list(subgraph.nodes)], key=lambda n:n[1], reverse=True)]
+    complementary_nodes = [node for node in graph.nodes if node not in subgraph.nodes]
+    for i in subgraph_nodes:
+        # Consider within-group pairs and pairs with complementary nodes.
+        discordant_sum = 0
+        worst_case_sum = 0
+        within_group_nodes = [node for node in subgraph_nodes if node != i] # no self-loops
+        for j in within_group_nodes + complementary_nodes:
+            diff = (base_scores[i]-base_scores[j]) ** 2
+            worst_case_sum += diff
+            if (base_scores[i]-base_scores[j])*(ranking[i]-ranking[j]) > 0:
+                discordant_sum += diff
+        tau.append((ranking[i], (discordant_sum / worst_case_sum) ** 0.5))
+    
+    return tau # a list of (rank, tau) tuples, one for each node in subgraph
 
 
 ##### Group-Representation #####

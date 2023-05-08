@@ -94,6 +94,26 @@ def minority_ratio(trial:int, ratio:float, N=500):
     return accuracy
 
 
+def get_individual_tau(trial:int, iterations:int, sampling_method:Sampling, N=500, Nm=100):
+    accuracy = []
+    H = FairPairGraph()
+    H.generate_groups(N, Nm)
+    H.group_assign_scores(nodes=H.majority_nodes, distr=Distributions.normal_distr)
+    H.group_assign_scores(nodes=H.minority_nodes, distr=Distributions.normal_distr, loc=0.3, scale=0.2) # give a disadvantage to the minority
+    sampler = sampling_method(H, warn=False)
+    ranker = RankRecovery(H)
+    sampler.apply(iter=iterations, k=1)
+    ranking, other_nodes = ranker.apply() # by default, apply rankCentrality method
+    if isinstance(sampler, RandomSampling): method = 'Random Sampling'
+    elif isinstance(sampler, OversampleMinority): method = 'Oversample Minority'
+    elif isinstance(sampler, ProbKnockoutSampling): method = 'ProbKnockout Sampling'
+    elif isinstance(sampler, GroupKnockoutSampling): method = 'GroupKnockout Sampling'
+    if len(other_nodes) == 0:
+        taus = weighted_individual_tau(H, ranking, H.majority)
+        accuracy += [(trial, rank, iterations, tau, method, 'Majority') for rank, tau in taus]
+        taus = weighted_individual_tau(H, ranking, H.minority)
+        accuracy += [(trial, rank, iterations, tau, method, 'Minority') for rank, tau in taus]
+    return accuracy
 
 
 def get_star_graph(trial, stariness, N=500, Nm=0):

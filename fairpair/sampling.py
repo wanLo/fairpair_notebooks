@@ -104,7 +104,7 @@ class RandomSampling(Sampling):
 
 class ProbKnockoutSampling(Sampling):
 
-    def apply(self, iter=1, k=10, f=0.2, min_prob=0.001, seed: int | None = None):
+    def apply(self, iter=1, k=10, f=0.2, min_prob=0.1, seed: int | None = None):
         '''
         Select nodes probabilistically based on their ratio of wins (success rate) so far.
 
