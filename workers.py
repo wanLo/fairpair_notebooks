@@ -100,7 +100,7 @@ def get_individual_tau(trial:int, iterations:int, sampling_method:Sampling, N=50
     H.generate_groups(N, Nm)
     H.group_assign_scores(nodes=H.majority_nodes, distr=Distributions.normal_distr)
     H.group_assign_scores(nodes=H.minority_nodes, distr=Distributions.normal_distr, loc=0.3, scale=0.2) # give a disadvantage to the minority
-    sampler = sampling_method(H, warn=False)
+    sampler = sampling_method(H, warn=False, use_exp_BTL=True)
     ranker = RankRecovery(H)
     sampler.apply(iter=iterations, k=1)
     ranking, other_nodes = ranker.apply() # by default, apply rankCentrality method

@@ -24,6 +24,7 @@ def random_list_to_pairs(G:FairPairGraph, nodes:list, seed: int | None = None, w
 class Sampling:
 
     def __init__(self, G:FairPairGraph, split_using=random_list_to_pairs,
+                 use_exp_BTL=False,
                  log_comparisons=False, log_success=False, warn=True):
         '''
         Initialize the Sampling
@@ -32,13 +33,15 @@ class Sampling:
         ----------
         - G: the FairPairGraph this Sampling will be applied to
         - split_using: a function that splits lists into disjoint pairs
-        - log_comparisons: whether to log #comparisons per node after each iteration
-        - log_success: whether to log the success rate of each node after each iteration
-        - warn: whether to throw warnings
+        - use_exp_BTL: if true, use exp(scores) in the BTL model, otherwise use scores directly
+        - log_comparisons: if true, log #comparisons per node after each iteration
+        - log_success: if true, log the success rate of each node after each iteration
+        - warn: if true, throw warnings
         '''
         self.G = G
         self.split_using = split_using
         self.warn = warn
+        self.use_exp_BTL = use_exp_BTL
 
         self.comparisons_over_time = pd.DataFrame()
         self.log_comparisons = log_comparisons
@@ -53,7 +56,10 @@ class Sampling:
         '''A helper for running k comparisons on selected nodes'''
         pairs = self.split_using(G=self.G, nodes=selected_nodes, seed=seed, warn=self.warn)
         for (i, j) in pairs:
-            self.G.compare_pair(i, j, k, seed=seed)
+            if self.use_exp_BTL:
+                self.G.compare_pair_exp(i, j, k, seed=seed)
+            else:
+                self.G.compare_pair(i, j, k, seed=seed)
         # logging
         if self.log_comparisons:
             for node, comparisons in self.G.comparisons:

@@ -96,6 +96,47 @@ class FairPairGraph(nx.DiGraph):
         edge_j_i = {wins_attr: k - wins_j, # the comparison in the other way
                     weight_attr: 1 - wins_j/k}
         self.add_edge(j, i, **edge_j_i)
+    
+
+    def compare_pair_exp(self, i, j, k = 1, node_attr="score", weight_attr="weight", wins_attr="wins", seed: int | None = None):
+        '''
+        Compares nodes i and j using the BTL-formula, k times (binomial distribution).
+        Uses exp(score) for weights of the nodes.
+
+        Adds a weighted, directed edge between i and j, or updates the edge if the pair had already been compared before.
+
+        Parameters
+        ----------
+        - i: the first node to compare
+        - j: the second node to compare
+        - k: how often to compare the nodes
+        - node_attr: name of the node attribute for storing scores
+        - weight_attr: name of the edge attribute for storing weights
+        - wins_attr: name of the edge attribute for storing #wins
+        - seed: seed for the random number generator
+        '''
+        rng = np.random.default_rng(seed=seed)
+        # BTL using exp(score)
+        prob = np.exp(self.nodes[j][node_attr]) / (np.exp(self.nodes[i][node_attr]) + np.exp(self.nodes[j][node_attr]))
+        # normalize such that prob is in [0,1]
+        max_prob = np.exp(1)/(np.exp(1) + 1) # assumes ground-truth scores are in [0,1]
+        min_prob = 1/(np.exp(1) + 1)
+        prob = (prob-min_prob)/(max_prob-min_prob)
+        # whether j wins
+        wins_j = rng.binomial(k, prob)
+
+        # incorporate the results of previous comparisons
+        if (self.has_edge(i, j) and self.has_edge(j, i) and wins_attr in self.edges[(i, j)] and wins_attr in self.edges[(j, i)]):
+            wins_j += self.edges[(i,j)][wins_attr]
+            k += self.edges[(i,j)][wins_attr] + self.edges[(j,i)][wins_attr]
+
+        edge_i_j = {wins_attr: wins_j, # total wins of j over i, arrows are towards the winners
+                    weight_attr: wins_j/k} # compared strength
+        self.add_edge(i, j, **edge_i_j)
+
+        edge_j_i = {wins_attr: k - wins_j, # the comparison in the other way
+                    weight_attr: 1 - wins_j/k}
+        self.add_edge(j, i, **edge_j_i)
 
 
     @property
