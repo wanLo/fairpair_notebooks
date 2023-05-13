@@ -119,9 +119,9 @@ class FairPairGraph(nx.DiGraph):
         # BTL using exp(score)
         prob = np.exp(self.nodes[j][node_attr]) / (np.exp(self.nodes[i][node_attr]) + np.exp(self.nodes[j][node_attr]))
         # normalize such that prob is in [0,1]
-        max_prob = np.exp(1)/(np.exp(1) + 1) # assumes ground-truth scores are in [0,1]
-        min_prob = 1/(np.exp(1) + 1)
-        prob = (prob-min_prob)/(max_prob-min_prob)
+        #max_prob = np.exp(1)/(np.exp(1) + 1) # assumes ground-truth scores are in [0,1]
+        #min_prob = 1/(np.exp(1) + 1)
+        #prob = (prob-min_prob)/(max_prob-min_prob)
         # whether j wins
         wins_j = rng.binomial(k, prob)
 

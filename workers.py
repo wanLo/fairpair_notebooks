@@ -1,3 +1,6 @@
+from scipy.stats import norm
+from scipy import integrate
+
 from fairpair import *
 
 #### just some functions that had to be excluded from jupyter notebooks in order to use multiprocessing.Pool
@@ -116,6 +119,21 @@ def get_individual_tau(trial:int, iterations:int, sampling_method:Sampling, N=50
     return accuracy
 
 
+def get_score_range(trial:int, scores_until:float, N=500):
+    accuracy = []
+    H = FairPairGraph()
+    H.generate_groups(N, 0)
+    H.group_assign_scores(nodes=H.majority_nodes, distr=Distributions.uniform_distr, low=0.0001, high=scores_until)
+    sampler = RandomSampling(H, warn=False, use_exp_BTL=True)
+    ranker = RankRecovery(H)
+    for j in range(11):
+        sampler.apply(iter=100, k=1)
+        ranking, other_nodes = ranker.apply() # by default, apply rankCentrality method
+        if len(other_nodes) == 0:
+            accuracy.append((trial, j*100, scores_until, weighted_tau(H, ranking)))
+    return accuracy
+
+
 def get_star_graph(trial, stariness, N=500, Nm=0):
     accuracy = []
     connected = False
@@ -133,3 +151,12 @@ def get_star_graph(trial, stariness, N=500, Nm=0):
             connected = True
         accuracy.append((trial, stariness, j, MSE(H, ranking)))
     return accuracy
+
+
+def get_winning_prob(sigma:float):
+    probs = []
+    f = lambda y, x: 1/(1 + np.exp(x-y))*norm.pdf(x=x, scale=sigma)*norm.pdf(x=y, scale=sigma) # softmax, but less prone to overflow
+    out, error = integrate.dblquad(f, -500, 500, lambda x:x, 500)
+    out = 2*out # symmetric, so times 2
+    probs.append((sigma, out, error))
+    return probs
