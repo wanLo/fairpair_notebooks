@@ -137,9 +137,9 @@ def spearmanr(graph:FairPairGraph, ranking:dict, subgraph:FairPairGraph | None =
 
 def weighted_tau(graph:FairPairGraph, ranking:dict, subgraph:FairPairGraph | None = None, score_attr='score') -> float:
     '''
-    Calculates weighted Kendall tau for a `ranking` given the
+    Calculates the weighted Kemedy distance for a `ranking` given the
     "ground-truth" ranking from initial scores of `graph`.
-    Adapted from Negahban et al. (2012)'s version of weighted Kendall tau.
+    Adapted from Negahban et al. (2012)'s version of the weighted Kemedy distance.
 
     Parameters
     ----------
@@ -180,9 +180,8 @@ def weighted_tau(graph:FairPairGraph, ranking:dict, subgraph:FairPairGraph | Non
 def weighted_tau_separate(graph:FairPairGraph, ranking:dict, subgraph:FairPairGraph | None = None,
                           score_attr='score', calc_within=True, calc_between=True) -> Tuple[float, float]:
     '''
-    Calculates within-group and between-group weighted Kendall tau for a `ranking` given the
+    Calculates the within-group and the between-group weighted Kemedy distance for a `ranking` given the
     "ground-truth" ranking from initial scores of `graph`.
-    Adapted from Negahban et al. (2012)'s version of weighted Kendall tau.
 
     Parameters
     ----------
@@ -195,8 +194,8 @@ def weighted_tau_separate(graph:FairPairGraph, ranking:dict, subgraph:FairPairGr
 
     Returns
     -------
-    - tau_within: within-group weighted Kendall tau
-    - tau_between: between-group weighted Kendall tau
+    - tau_within: within-group weighted Kemedy distance
+    - tau_between: between-group weighted Kemedy distance
     '''
     if subgraph is None: subgraph = graph
 
@@ -240,7 +239,7 @@ def weighted_tau_separate(graph:FairPairGraph, ranking:dict, subgraph:FairPairGr
 
 def weighted_individual_tau(graph:FairPairGraph, ranking:dict, subgraph:FairPairGraph | None = None, score_attr='score') -> list[float]:
     '''
-    Calculates weighted Kendall tau for each node in a `ranking` separately,
+    Calculates the weighted Kemedy distance for each node in a `ranking` separately,
     given the "ground-truth" ranking from initial scores of `graph`.
 
     Parameters
@@ -273,6 +272,50 @@ def weighted_individual_tau(graph:FairPairGraph, ranking:dict, subgraph:FairPair
         tau.append((ranking[i], (discordant_sum / worst_case_sum) ** 0.5))
     
     return tau # a list of (rank, tau) tuples, one for each node in subgraph
+
+
+def weighted_topk_tau(graph:FairPairGraph, ranking:dict, subgraph:FairPairGraph | None = None,
+                      topk=[10,20,50,100,200,500], score_attr='score') -> list[float]:
+    '''
+    Calculates the weighted Kemedy distance for the top k nodes in a `ranking`,
+    given the "ground-truth" ranking from initial scores of `graph`.
+
+    Parameters
+    ----------
+    - graph: the full FairPairGraph for ground-truth ranks
+    - ranking: dict of nodes and their ranking results
+    - topk: at which cutoffs to calculate the Kemedy distance
+    - subgraph: a FairPairGraph subgraph of `graph`, or identical to `graph` if None
+    - score_attr: name of the node attribute for storing scores
+    '''
+    if subgraph is None: subgraph = graph
+
+    # get rankings as dicts
+    ranking = scores_to_rank(ranking)
+    base_scores = {node: score for node, score in graph.nodes(data=score_attr)}
+
+    # extract (adjacency) matrices of weight difference and concordance
+    subgraph_nodes = [node for node, _ in sorted([(node, ranking[node]) for node in list(subgraph.nodes)], key=lambda n:n[1])]
+    complementary_nodes = [node for node in graph.nodes if node not in subgraph.nodes]
+    size = (len(subgraph), len(graph))
+    weights = np.zeros(size)
+    discordance = np.full(size, False)
+    for i, node_i in enumerate(subgraph_nodes):
+        # consider within-group pairs till before the diagonal
+        # and pairs with complementary nodes only one-way
+        # use "upper diagonal" to enable top-k evaluation
+        for j, node_j in enumerate(subgraph_nodes[i:] + complementary_nodes):
+            weights[i, j] = (base_scores[node_i]-base_scores[node_j]) ** 2
+            discordance[i, j] = (base_scores[node_i]-base_scores[node_j])*(ranking[node_i]-ranking[node_j]) > 0
+
+    tau = []
+    for k in topk:
+        if len(subgraph)>=k:
+            discordant_sum = np.sum(weights[:k,:], where=discordance[:k,:])
+            worst_case_sum = np.sum(weights[:k,:])
+            tau.append((k, (discordant_sum / worst_case_sum) ** 0.5))
+
+    return tau # a list of (k, tau) tuples, one for each cutoff k
 
 
 ##### Group-Representation #####

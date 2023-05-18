@@ -24,7 +24,7 @@ def random_list_to_pairs(G:FairPairGraph, nodes:list, seed: int | None = None, w
 class Sampling:
 
     def __init__(self, G:FairPairGraph, split_using=random_list_to_pairs,
-                 use_exp_BTL=False,
+                 use_exp_BTL=True,
                  log_comparisons=False, log_success=False, warn=True):
         '''
         Initialize the Sampling
@@ -138,6 +138,38 @@ class ProbKnockoutSampling(Sampling):
                 # all node get equal chance of being selected
                 selected_nodes = rng.choice(self.G.nodes, n, replace=False)
             #selected_nodes = [node for node, prob in normalized_success if rng.binomial(1,prob)]
+            self._split_and_compare(selected_nodes, k, iteration, seed)
+
+
+class RankSampling(Sampling):
+
+    def apply(self, iter=1, k=10, f=0.2, min_prob=0.0001, ranking=None, seed: int | None = None):
+        '''
+        Select nodes probabilistically based on their rank so far.
+
+        Parameters
+        ----------
+        - iter: how many iterations of ProbKnockout sampling to perform
+        - k: how often each sampled pair will be compared per iteration
+        - f: fraction of nodes to sample in each iteration
+        - min_prob: minimal probability of a node being selected (avoids being stuck at zero)
+        - ranking: obtained after the last iteration of sampling, leave None for equal chances
+        - seed: seed for the random number generator
+        '''
+        n = int(len(self.G)*f) # how many nodes to sample
+        rng = np.random.default_rng(seed=seed)
+        for iteration in range(iter):
+            if ranking is not None:
+                rates = [ranking[node] for node in self.G.nodes] # ranking result in order of self.G.nodes
+                # rescale rates to (0,1)
+                max_rate = max(rates)
+                min_rate = min(rates)
+                normalized_rates = [((rate-min_rate)/(max_rate-min_rate)*(1-min_prob)+min_prob)**2 for rate in rates] # min-max scaler
+                normalized_rates = [rate/sum(normalized_rates) for rate in normalized_rates] # must sum to 1
+                selected_nodes = rng.choice(self.G.nodes, n, replace=False, p=normalized_rates)
+            else:
+                # all node get equal chance of being selected
+                selected_nodes = rng.choice(self.G.nodes, n, replace=False)
             self._split_and_compare(selected_nodes, k, iteration, seed)
 
 

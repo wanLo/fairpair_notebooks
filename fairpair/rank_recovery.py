@@ -53,7 +53,7 @@ class RankRecovery:
             ranking = rank_using(adjacency, **kwargs)
             ranking = [float(abs(score)) if isinstance(score, complex) else float(score) for score in ranking]
             ranking = dict(zip(connected_nodes, ranking)) # nodes might have specific names, so we return a dict
-        else: ranking = []
+        else: ranking = None
 
         return ranking, other_nodes
     

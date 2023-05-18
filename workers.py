@@ -97,7 +97,7 @@ def minority_ratio(trial:int, ratio:float, N=500):
     return accuracy
 
 
-def get_individual_tau(trial:int, iterations:int, sampling_method:Sampling, N=500, Nm=100):
+def get_individual_tau(trial:int, sampling_method:Sampling, N=500, Nm=100):
     accuracy = []
     H = FairPairGraph()
     H.generate_groups(N, Nm)
@@ -105,17 +105,22 @@ def get_individual_tau(trial:int, iterations:int, sampling_method:Sampling, N=50
     H.group_assign_scores(nodes=H.minority_nodes, distr=Distributions.normal_distr, loc=0.3, scale=0.2) # give a disadvantage to the minority
     sampler = sampling_method(H, warn=False, use_exp_BTL=True)
     ranker = RankRecovery(H)
-    sampler.apply(iter=iterations, k=1)
-    ranking, other_nodes = ranker.apply() # by default, apply rankCentrality method
-    if isinstance(sampler, RandomSampling): method = 'Random Sampling'
-    elif isinstance(sampler, OversampleMinority): method = 'Oversample Minority'
-    elif isinstance(sampler, ProbKnockoutSampling): method = 'ProbKnockout Sampling'
-    elif isinstance(sampler, GroupKnockoutSampling): method = 'GroupKnockout Sampling'
-    if len(other_nodes) == 0:
-        taus = weighted_individual_tau(H, ranking, H.majority)
-        accuracy += [(trial, rank, iterations, tau, method, 'Majority') for rank, tau in taus]
-        taus = weighted_individual_tau(H, ranking, H.minority)
-        accuracy += [(trial, rank, iterations, tau, method, 'Minority') for rank, tau in taus]
+    ranking = None
+    for j in range(11):
+        if isinstance(sampler, RankSampling):
+            sampler.apply(iter=100, k=1, ranking=ranking)
+        else: sampler.apply(iter=100, k=1)
+        ranking, other_nodes = ranker.apply() # by default, apply rankCentrality method
+        if isinstance(sampler, RandomSampling): method = 'Random Sampling'
+        elif isinstance(sampler, OversampleMinority): method = 'Oversample Minority'
+        elif isinstance(sampler, ProbKnockoutSampling): method = 'ProbKnockout Sampling'
+        elif isinstance(sampler, RankSampling): method = 'Rank Sampling'
+        elif isinstance(sampler, GroupKnockoutSampling): method = 'GroupKnockout Sampling'
+        if len(other_nodes) == 0:
+            taus = weighted_individual_tau(H, ranking, H.majority)
+            accuracy += [(trial, rank, j*100, tau, method, 'Majority') for rank, tau in taus]
+            taus = weighted_individual_tau(H, ranking, H.minority)
+            accuracy += [(trial, rank, j*100, tau, method, 'Minority') for rank, tau in taus]
     return accuracy
 
 
@@ -160,3 +165,30 @@ def get_winning_prob(sigma:float):
     out = 2*out # symmetric, so times 2
     probs.append((sigma, out, error))
     return probs
+
+
+def get_topk_tau(trial:int, sampling_method:Sampling, topk=[10,50,100,250,500], N=500, Nm=100):
+    accuracy = []
+    H = FairPairGraph()
+    H.generate_groups(N, Nm)
+    H.group_assign_scores(nodes=H.majority_nodes, distr=Distributions.normal_distr)
+    H.group_assign_scores(nodes=H.minority_nodes, distr=Distributions.normal_distr, loc=0.3, scale=0.2) # give a disadvantage to the minority
+    sampler = sampling_method(H, warn=False, use_exp_BTL=True)
+    ranker = RankRecovery(H)
+    ranking = None
+    for j in range(101):
+        if isinstance(sampler, RankSampling):
+            sampler.apply(iter=10, k=1, ranking=ranking)
+        else: sampler.apply(iter=10, k=1)
+        ranking, other_nodes = ranker.apply() # by default, apply rankCentrality method
+        if isinstance(sampler, RandomSampling): method = 'Random Sampling'
+        elif isinstance(sampler, OversampleMinority): method = 'Oversample Minority'
+        elif isinstance(sampler, ProbKnockoutSampling): method = 'ProbKnockout Sampling'
+        elif isinstance(sampler, RankSampling): method = 'Rank Sampling'
+        elif isinstance(sampler, GroupKnockoutSampling): method = 'GroupKnockout Sampling'
+        if len(other_nodes) == 0:
+            taus = weighted_topk_tau(H, ranking, topk=topk)
+            accuracy += [(trial, k, j*10, tau, method) for k, tau in taus]
+            #taus = weighted_topk_tau(H, ranking, H.minority)
+            #accuracy += [(trial, topk, j*100, tau, method, 'Minority') for topk, tau in taus]
+    return accuracy
