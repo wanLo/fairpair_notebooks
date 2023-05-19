@@ -164,7 +164,7 @@ class RankSampling(Sampling):
                 # rescale rates to (0,1)
                 max_rate = max(rates)
                 min_rate = min(rates)
-                normalized_rates = [((rate-min_rate)/(max_rate-min_rate)*(1-min_prob)+min_prob)**2 for rate in rates] # min-max scaler
+                normalized_rates = [(rate-min_rate)/(max_rate-min_rate)*(1-min_prob)+min_prob for rate in rates] # min-max scaler
                 normalized_rates = [rate/sum(normalized_rates) for rate in normalized_rates] # must sum to 1
                 selected_nodes = rng.choice(self.G.nodes, n, replace=False, p=normalized_rates)
             else:

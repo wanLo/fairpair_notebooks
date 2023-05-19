@@ -1,5 +1,7 @@
 from scipy.stats import norm
 from scipy import integrate
+import mpmath
+import numpy as np
 
 from fairpair import *
 
@@ -192,3 +194,64 @@ def get_topk_tau(trial:int, sampling_method:Sampling, topk=[10,50,100,250,500], 
             #taus = weighted_topk_tau(H, ranking, H.minority)
             #accuracy += [(trial, topk, j*100, tau, method, 'Minority') for topk, tau in taus]
     return accuracy
+
+
+### Parameter optimization for uniform distribution ###
+
+def _softmax_max(wj, wi): # highest softmax result for either wi or wj
+    return 1/(1 + np.exp(min([wi,wj])-max([wi,wj])))
+
+def _softmax(wj, wi): # softmax result for wj
+    return 1/(1 + np.exp(wi-wj))
+
+def _sep_stronger_prob_uniform(majority, minority, ratio=0.2):
+    p_within_min = (-2)/(minority**2)*((np.pi**2)/12 + minority*np.log(2) + mpmath.fp.polylog(2,-np.exp(minority)))
+    p_within_maj = (-2)/(majority**2)*((np.pi**2)/12 + majority*np.log(2) + mpmath.fp.polylog(2,-np.exp(majority)))
+    p_between = 2/(minority*majority)*integrate.dblquad(_softmax_max, 0, minority, 0, majority)[0]
+    return ratio**2*p_within_min + (1-ratio)**2*p_within_maj + (1-ratio)*ratio*p_between
+
+def _sep_majority_prob_uniform(majority, minority):
+    p_between = 1/(minority*majority)*integrate.dblquad(_softmax, 0, minority, 0, majority)[0]
+    return p_between
+
+def get_uniform_loss(x, prob_maj, prob_stronger, ratio=0.2):
+    majority = x[0]
+    minority = x[1]
+    stronger_result = _sep_stronger_prob_uniform(majority, minority, ratio)
+    maj_result = _sep_majority_prob_uniform(majority, minority)
+    return np.linalg.norm(np.array([prob_maj, prob_stronger] - np.array([maj_result, stronger_result])))
+
+
+### Parameter optimization for normal distribution ###
+
+_min_range = -300
+_max_range = 300
+
+def _softmax_normal_max(wj, wi, myu_j, sigma_j, myu_i, sigma_i): # highest softmax result for either wi or wj * prob density
+    return 1/(1 + np.exp(min([wi,wj])-max([wi,wj])))*norm.pdf(x=wj, loc=myu_j, scale=sigma_j)*norm.pdf(x=wi, loc=myu_i, scale=sigma_i)
+
+def _softmax_normal(wj, wi, myu_j, sigma_j, myu_i, sigma_i): # softmax result for wj * prob density
+    return 1/(1 + np.exp(wi-wj))*norm.pdf(x=wj, loc=myu_j, scale=sigma_j)*norm.pdf(x=wi, loc=myu_i, scale=sigma_i)
+
+def _sep_stronger_prob_normal(myu_maj, sigma_maj, myu_min, sigma_min, ratio=0.2):
+    args = (myu_min, sigma_min, myu_min, sigma_min)
+    p_within_min = 2*integrate.dblquad(_softmax_normal, _min_range, _max_range, lambda x:x, _max_range, args=args)[0]
+    args = (myu_maj, sigma_maj, myu_maj, sigma_maj)
+    p_within_maj = 2*integrate.dblquad(_softmax_normal, _min_range, _max_range, lambda x:x, _max_range, args=args)[0]
+    args = (myu_maj, sigma_maj, myu_min, sigma_min)
+    p_between = 2*integrate.dblquad(_softmax_normal_max, _min_range, _max_range, _min_range, _max_range, args=args)[0]
+    return ratio**2*p_within_min + (1-ratio)**2*p_within_maj + (1-ratio)*ratio*p_between
+
+def _sep_majority_prob_normal(myu_maj, sigma_maj, myu_min, sigma_min):
+    args = (myu_maj, sigma_maj, myu_min, sigma_min)
+    p_between = integrate.dblquad(_softmax_normal, _min_range, _max_range, _min_range, _max_range, args=args)[0]
+    return p_between
+
+def get_normal_loss(x, prob_maj, prob_stronger, ratio=0.2):
+    myu_maj = x[0]
+    sigma_maj = x[1]
+    myu_min = x[2]
+    sigma_min = x[3]
+    stronger_result = _sep_stronger_prob_normal(myu_maj, sigma_maj, myu_min, sigma_min, ratio)
+    maj_result = _sep_majority_prob_normal(myu_maj, sigma_maj, myu_min, sigma_min)
+    return np.linalg.norm(np.array([prob_maj, prob_stronger] - np.array([maj_result, stronger_result])))
