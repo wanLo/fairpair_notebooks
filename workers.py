@@ -226,6 +226,7 @@ def get_uniform_loss(x, prob_maj, prob_stronger, ratio=0.2):
 
 _min_range = -300
 _max_range = 300
+epsabs = 1e-4
 
 def _softmax_normal_max(wj, wi, myu_j, sigma_j, myu_i, sigma_i): # highest softmax result for either wi or wj * prob density
     return 1/(1 + np.exp(min([wi,wj])-max([wi,wj])))*norm.pdf(x=wj, loc=myu_j, scale=sigma_j)*norm.pdf(x=wi, loc=myu_i, scale=sigma_i)
@@ -235,16 +236,16 @@ def _softmax_normal(wj, wi, myu_j, sigma_j, myu_i, sigma_i): # softmax result fo
 
 def _sep_stronger_prob_normal(myu_maj, sigma_maj, myu_min, sigma_min, ratio=0.2):
     args = (myu_min, sigma_min, myu_min, sigma_min)
-    p_within_min = 2*integrate.dblquad(_softmax_normal, _min_range, _max_range, lambda x:x, _max_range, args=args)[0]
+    p_within_min = 2*integrate.dblquad(_softmax_normal, _min_range, _max_range, lambda x:x, _max_range, args=args, epsabs=epsabs)[0]
     args = (myu_maj, sigma_maj, myu_maj, sigma_maj)
-    p_within_maj = 2*integrate.dblquad(_softmax_normal, _min_range, _max_range, lambda x:x, _max_range, args=args)[0]
+    p_within_maj = 2*integrate.dblquad(_softmax_normal, _min_range, _max_range, lambda x:x, _max_range, args=args, epsabs=epsabs)[0]
     args = (myu_maj, sigma_maj, myu_min, sigma_min)
-    p_between = 2*integrate.dblquad(_softmax_normal_max, _min_range, _max_range, _min_range, _max_range, args=args)[0]
+    p_between = 2*integrate.dblquad(_softmax_normal_max, _min_range, _max_range, _min_range, _max_range, args=args, epsabs=epsabs)[0]
     return ratio**2*p_within_min + (1-ratio)**2*p_within_maj + (1-ratio)*ratio*p_between
 
 def _sep_majority_prob_normal(myu_maj, sigma_maj, myu_min, sigma_min):
     args = (myu_maj, sigma_maj, myu_min, sigma_min)
-    p_between = integrate.dblquad(_softmax_normal, _min_range, _max_range, _min_range, _max_range, args=args)[0]
+    p_between = integrate.dblquad(_softmax_normal, _min_range, _max_range, _min_range, _max_range, args=args, epsabs=epsabs)[0]
     return p_between
 
 def get_normal_loss(x, prob_maj, prob_stronger, ratio=0.2):
@@ -255,3 +256,18 @@ def get_normal_loss(x, prob_maj, prob_stronger, ratio=0.2):
     stronger_result = _sep_stronger_prob_normal(myu_maj, sigma_maj, myu_min, sigma_min, ratio)
     maj_result = _sep_majority_prob_normal(myu_maj, sigma_maj, myu_min, sigma_min)
     return np.linalg.norm(np.array([prob_maj, prob_stronger] - np.array([maj_result, stronger_result])))
+
+
+### Parallel double integration ###
+#def _my_inner_quad(x, *args):
+#    args = (x,) + args
+#    return integrate.quad_vec(_softmax_normal, x, _max_range, args=args, workers=-1)[0]
+#
+#def _my_dblquad(args=None, _min_range=_min_range, _max_range=_max_range):
+#    return integrate.quad_vec(_my_inner_quad, _min_range, _max_range, args=args, workers=-1)[0]
+
+
+def get_sep_probs_normal(myu_maj, sigma_maj, myu_min, sigma_min, ratio=0.2):
+    stronger_result = _sep_stronger_prob_normal(myu_maj, sigma_maj, myu_min, sigma_min, ratio)
+    maj_result = _sep_majority_prob_normal(myu_maj, sigma_maj, myu_min, sigma_min)
+    return myu_maj, sigma_maj, myu_min, sigma_min, maj_result, stronger_result
