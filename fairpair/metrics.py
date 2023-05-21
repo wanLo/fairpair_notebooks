@@ -325,3 +325,48 @@ def rND(graph:FairPairGraph, ranking:dict, subgraph:FairPairGraph | None = None)
     '''
     Calculates the rND score
     '''
+
+
+def exposure(graph:FairPairGraph, ranking:dict, subgraph:FairPairGraph | None = None) -> float:
+    '''
+    Calculates the exposure (Singh & Joachims, 2018) of the nodes of the subgraph in the ranking.
+    Uses log_2 discount and normalizes by group size.
+
+    Parameters
+    ----------
+    - graph: the full FairPairGraph for ground-truth ranks
+    - ranking: dict of nodes and their ranking results
+    - subgraph: a FairPairGraph subgraph of `graph`, or identical to `graph` if None
+    '''
+    if subgraph is None: subgraph = graph
+    ranking = scores_to_rank(ranking)
+
+    exp = np.array([ranking[node] for node in subgraph.nodes])
+    exp = 1/np.log2(exp + 2) # use +2 such that the highest rank (0) works out fine
+    return np.sum(exp)/len(subgraph)
+
+
+def topk_exposure(graph:FairPairGraph, ranking:dict, subgraph:FairPairGraph | None = None,
+                  topk=[10,20,50,100,200,500]) -> float:
+    '''
+    Calculates the exposure (Singh & Joachims, 2018) of the top k nodes of the subgraph in the ranking.
+    Uses log_2 discount and normalizes by k.
+
+    Parameters
+    ----------
+    - graph: the full FairPairGraph for ground-truth ranks
+    - ranking: dict of nodes and their ranking results
+    - subgraph: a FairPairGraph subgraph of `graph`, or identical to `graph` if None
+    - topk: at which cutoffs to calculate the Exposure
+    '''
+    if subgraph is None: subgraph = graph
+    ranking = scores_to_rank(ranking)
+
+    exp = np.array(sorted([ranking[node] for node in subgraph.nodes])) # sort to enable topk
+    exp = 1/np.log2(exp + 2) # use +2 such that the highest rank (0) works out fine
+
+    exps = []
+    for k in topk:
+        if len(subgraph)>=k:
+            exps.append((k, np.sum(exp[:k])/k))
+    return exps

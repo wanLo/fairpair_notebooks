@@ -271,3 +271,57 @@ def get_sep_probs_normal(myu_maj, sigma_maj, myu_min, sigma_min, ratio=0.2):
     stronger_result = _sep_stronger_prob_normal(myu_maj, sigma_maj, myu_min, sigma_min, ratio)
     maj_result = _sep_majority_prob_normal(myu_maj, sigma_maj, myu_min, sigma_min)
     return myu_maj, sigma_maj, myu_min, sigma_min, maj_result, stronger_result
+
+
+def get_exposure(trial:int, sampling_method:Sampling, N=500, Nm=100):
+    exps = []
+    H = FairPairGraph()
+    H.generate_groups(N, Nm)
+    H.group_assign_scores(nodes=H.majority_nodes, distr=Distributions.normal_distr)
+    H.group_assign_scores(nodes=H.minority_nodes, distr=Distributions.normal_distr, loc=0.3, scale=0.2) # give a disadvantage to the minority
+    sampler = sampling_method(H, warn=False, use_exp_BTL=True)
+    ranker = RankRecovery(H)
+    ranking = None
+    for j in range(11):
+        if isinstance(sampler, RankSampling):
+            sampler.apply(iter=100, k=1, ranking=ranking)
+        else: sampler.apply(iter=100, k=1)
+        ranking, other_nodes = ranker.apply() # by default, apply rankCentrality method
+        if isinstance(sampler, RandomSampling): method = 'Random Sampling'
+        elif isinstance(sampler, OversampleMinority): method = 'Oversample Minority'
+        elif isinstance(sampler, ProbKnockoutSampling): method = 'ProbKnockout Sampling'
+        elif isinstance(sampler, RankSampling): method = 'Rank Sampling'
+        elif isinstance(sampler, GroupKnockoutSampling): method = 'GroupKnockout Sampling'
+        if len(other_nodes) == 0:
+            exp = exposure(H, ranking, H.majority)
+            exps += [(trial, j*100, exp, method, 'Majority')]
+            exp = exposure(H, ranking, H.minority)
+            exps += [(trial, j*100, exp, method, 'Minority')]
+    return exps
+
+
+def get_topk_exposure(trial:int, sampling_method:Sampling, topk=[10,50,100,250,500], N=500, Nm=100):
+    exps = []
+    H = FairPairGraph()
+    H.generate_groups(N, Nm)
+    H.group_assign_scores(nodes=H.majority_nodes, distr=Distributions.normal_distr)
+    H.group_assign_scores(nodes=H.minority_nodes, distr=Distributions.normal_distr, loc=0.3, scale=0.2) # give a disadvantage to the minority
+    sampler = sampling_method(H, warn=False, use_exp_BTL=True)
+    ranker = RankRecovery(H)
+    ranking = None
+    for j in range(11):
+        if isinstance(sampler, RankSampling):
+            sampler.apply(iter=100, k=1, ranking=ranking)
+        else: sampler.apply(iter=100, k=1)
+        ranking, other_nodes = ranker.apply() # by default, apply rankCentrality method
+        if isinstance(sampler, RandomSampling): method = 'Random Sampling'
+        elif isinstance(sampler, OversampleMinority): method = 'Oversample Minority'
+        elif isinstance(sampler, ProbKnockoutSampling): method = 'ProbKnockout Sampling'
+        elif isinstance(sampler, RankSampling): method = 'Rank Sampling'
+        elif isinstance(sampler, GroupKnockoutSampling): method = 'GroupKnockout Sampling'
+        if len(other_nodes) == 0:
+            exp = topk_exposure(H, ranking, H.majority, topk=topk)
+            exps += [(trial, k, j*100, e, method, 'Majority') for k, e in exp]
+            exp = topk_exposure(H, ranking, H.minority, topk=topk)
+            exps += [(trial, k, j*100, e, method, 'Minority') for k, e in exp]
+    return exps
