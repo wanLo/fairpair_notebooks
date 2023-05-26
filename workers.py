@@ -325,3 +325,33 @@ def get_topk_exposure(trial:int, sampling_method:Sampling, topk=[10,50,100,250,5
             exp = topk_exposure(H, ranking, H.minority, topk=topk)
             exps += [(trial, k, j*100, e, method, 'Minority') for k, e in exp]
     return exps
+
+
+### Parameter optimization with separate bias distribution ###
+
+_min_range = -300
+_max_range = 300
+epsabs = 1e-4
+
+def get_normal_loss_bias(x, prob_maj, prob_stronger):
+    myu = x[0]
+    sigma = x[1]
+    myu_bias = x[2]
+    sigma_bias = x[3]
+    stronger_result = _sep_stronger_prob_normal(myu, sigma, myu + myu_bias, (sigma**2 + sigma_bias**2)**0.5)
+    maj_result = _sep_majority_prob_normal(myu, sigma, myu + myu_bias, (sigma**2 + sigma_bias**2)**0.5)
+    return np.linalg.norm(np.array([prob_maj, prob_stronger] - np.array([maj_result, stronger_result])))
+
+def get_normal_loss_bias_constraint(x, prob_maj, prob_stronger, _myu, _sigma_bias):
+    myu = _myu
+    sigma = x[0]
+    myu_bias = x[1]
+    sigma_bias = _sigma_bias
+    stronger_result = _sep_stronger_prob_normal(myu, sigma, myu + myu_bias, (sigma**2 + sigma_bias**2)**0.5)
+    maj_result = _sep_majority_prob_normal(myu, sigma, myu + myu_bias, (sigma**2 + sigma_bias**2)**0.5)
+    return np.linalg.norm(np.array([prob_maj, prob_stronger] - np.array([maj_result, stronger_result])))
+
+def get_sep_probs_normal_bias(myu, sigma, myu_bias, sigma_bias):
+    stronger_result = _sep_stronger_prob_normal(myu, sigma, myu + myu_bias, (sigma**2 + sigma_bias**2)**0.5)
+    maj_result = _sep_majority_prob_normal(myu, sigma, myu + myu_bias, (sigma**2 + sigma_bias**2)**0.5)
+    return maj_result, stronger_result
