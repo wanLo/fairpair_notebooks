@@ -161,7 +161,7 @@ class RankSampling(Sampling):
         for iteration in range(iter):
             if ranking is not None:
                 rates = [ranking[node] for node in self.G.nodes] # ranking result in order of self.G.nodes
-                # rescale rates to (0,1)
+                # rescale rates to (0,1) to eliminate negative scores
                 max_rate = max(rates)
                 min_rate = min(rates)
                 normalized_rates = [(rate-min_rate)/(max_rate-min_rate)*(1-min_prob)+min_prob for rate in rates] # min-max scaler

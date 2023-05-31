@@ -49,7 +49,7 @@ class FairPairGraph(nx.DiGraph):
         nx.function.set_node_attributes(self, labels_dict, attr)
 
 
-    def group_assign_scores(self, nodes: list, attr="score", distr = Distributions.uniform_distr, **kwargs):
+    def group_assign_scores(self, nodes: list, attr="score", distr=Distributions.normal_distr, **kwargs):
         '''
         Randomly draw scores from a distribution and assign them to the nodes of a subgraph
 
@@ -61,6 +61,23 @@ class FairPairGraph(nx.DiGraph):
         - **kwargs: keyword arguments passed to distr function
         '''
         scores_dict = dict(zip(nodes, distr(n = len(nodes), **kwargs)))
+        nx.function.set_node_attributes(self, scores_dict, attr)
+
+
+    def group_add_scores(self, nodes:list, attr="score", distr=Distributions.normal_distr, **kwargs):
+        '''
+        Randomly draw scores from a distribution and add them to the existing scores of the nodes of a subgraph
+
+        Parameters
+        ----------
+        - nodes: list of nodes to assign scores to
+        - attr: name of the node attribute for storing scores
+        - distr: distribution function with required keyword argument n (number of nodes)
+        - **kwargs: keyword arguments passed to distr function
+        '''
+        scores_dict = nx.function.get_node_attributes(self, attr)
+        for node in nodes:
+            scores_dict[node] += distr(n=1, **kwargs)[0]
         nx.function.set_node_attributes(self, scores_dict, attr)
 
 
@@ -101,7 +118,7 @@ class FairPairGraph(nx.DiGraph):
     def compare_pair_exp(self, i, j, k = 1, node_attr="score", weight_attr="weight", wins_attr="wins", seed: int | None = None):
         '''
         Compares nodes i and j using the BTL-formula, k times (binomial distribution).
-        Uses exp(score) for weights of the nodes.
+        Uses exp(score) for weights of the nodes, so the BTL-formula is also called "softmax" in this case.
 
         Adds a weighted, directed edge between i and j, or updates the edge if the pair had already been compared before.
 
@@ -118,10 +135,6 @@ class FairPairGraph(nx.DiGraph):
         rng = np.random.default_rng(seed=seed)
         # BTL using exp(score)
         prob = np.exp(self.nodes[j][node_attr]) / (np.exp(self.nodes[i][node_attr]) + np.exp(self.nodes[j][node_attr]))
-        # normalize such that prob is in [0,1]
-        #max_prob = np.exp(1)/(np.exp(1) + 1) # assumes ground-truth scores are in [0,1]
-        #min_prob = 1/(np.exp(1) + 1)
-        #prob = (prob-min_prob)/(max_prob-min_prob)
         # whether j wins
         wins_j = rng.binomial(k, prob)
 

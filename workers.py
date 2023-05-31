@@ -22,35 +22,32 @@ def get_representation(trial:int, N=500, Nm=100):
     return contained
 
 
-def get_accuracy(trial:int, N=500, Nm=100):
+def get_accuracy(trial:int, N=400, Nm=200):
     accuracy = []
     connected = False
     H = FairPairGraph()
-    H.generate_groups(N, Nm)
-    H.group_assign_scores(nodes=H.majority_nodes, distr=Distributions.normal_distr)
-    H.group_assign_scores(nodes=H.minority_nodes, distr=Distributions.normal_distr, loc=0.3, scale=0.2) # give a disadvantage to the minority
-    sampler = ProbKnockoutSampling(H, warn=False)
+    H.generate_groups(N, Nm) # same size groups
+    H.group_assign_scores(nodes=H.nodes, loc=0, scale=0.86142674) # general score distribution
+    H.group_add_scores(nodes=H.minority_nodes, loc=-1.43574282, scale=0.43071336) # add bias to unpriviledged group
+    sampler = RankSampling(H, warn=False)
     ranker = RankRecovery(H)
+    ranking = None
     for j in range(100):
-        sampler.apply(iter=10, k=1, min_prob=0.1) #min_prob=0.1
+        sampler.apply(iter=10, k=1, ranking=ranking) # p=0.75
         ranking, other_nodes = ranker.apply() # by default, apply rankCentrality method
         if len(other_nodes) == 0:
             if not connected:
                 print(f'Strongly connected after {j*10} iterations.')
                 connected = True
-            #r_maj = spearmanr(H, ranking, H.majority)
-            #if r_maj: accuracy.append((trial, j*5, r_maj[0], 'Majority'))
-            #r_min = spearmanr(H, ranking, H.minority)
-            #if r_min: accuracy.append((trial, j*5, r_min[0], 'Minority'))
             tau = weighted_tau(H, ranking, H.majority)
-            accuracy.append((trial, j*10, tau, 'Majority'))
+            accuracy.append((trial, j*10, tau, 'Priviledged'))
             tau = weighted_tau(H, ranking, H.minority)
-            accuracy.append((trial, j*10, tau, 'Minority'))
+            accuracy.append((trial, j*10, tau, 'Unpriviledged'))
             tau = weighted_tau_separate(H, ranking, H.majority)
-            accuracy.append((trial, j*10, tau[0], 'Majority within-group'))
+            accuracy.append((trial, j*10, tau[0], 'Priviledged within-group'))
             accuracy.append((trial, j*10, tau[1], 'Between groups'))
             tau = weighted_tau_separate(H, ranking, H.minority, calc_between=False)
-            accuracy.append((trial, j*10, tau[0], 'Minority within-group'))
+            accuracy.append((trial, j*10, tau[0], 'Unpriviledged within-group'))
     return accuracy
 
 
@@ -169,18 +166,20 @@ def get_winning_prob(sigma:float):
     return probs
 
 
-def get_topk_tau(trial:int, sampling_method:Sampling, topk=[10,50,100,250,500], N=500, Nm=100):
+def get_topk_tau(trial:int, sampling_method:Sampling, topk=[10,50,100,200,400], N=400, Nm=200):
     accuracy = []
     H = FairPairGraph()
-    H.generate_groups(N, Nm)
-    H.group_assign_scores(nodes=H.majority_nodes, distr=Distributions.normal_distr)
-    H.group_assign_scores(nodes=H.minority_nodes, distr=Distributions.normal_distr, loc=0.3, scale=0.2) # give a disadvantage to the minority
+    H.generate_groups(N, Nm) # same size groups
+    H.group_assign_scores(nodes=H.nodes, loc=0, scale=0.86142674) # general score distribution
+    H.group_add_scores(nodes=H.minority_nodes, loc=-1.43574282, scale=0.43071336) # add bias to unpriviledged group
     sampler = sampling_method(H, warn=False, use_exp_BTL=True)
     ranker = RankRecovery(H)
     ranking = None
     for j in range(101):
         if isinstance(sampler, RankSampling):
             sampler.apply(iter=10, k=1, ranking=ranking)
+        elif isinstance(sampler, OversampleMinority):
+            sampler.apply(iter=10, k=1, p=0.75)
         else: sampler.apply(iter=10, k=1)
         ranking, other_nodes = ranker.apply() # by default, apply rankCentrality method
         if isinstance(sampler, RandomSampling): method = 'Random Sampling'
@@ -273,19 +272,21 @@ def get_sep_probs_normal(myu_maj, sigma_maj, myu_min, sigma_min, ratio=0.2):
     return myu_maj, sigma_maj, myu_min, sigma_min, maj_result, stronger_result
 
 
-def get_exposure(trial:int, sampling_method:Sampling, N=500, Nm=100):
+def get_exposure(trial:int, sampling_method:Sampling, N=400, Nm=200):
     exps = []
     H = FairPairGraph()
-    H.generate_groups(N, Nm)
-    H.group_assign_scores(nodes=H.majority_nodes, distr=Distributions.normal_distr)
-    H.group_assign_scores(nodes=H.minority_nodes, distr=Distributions.normal_distr, loc=0.3, scale=0.2) # give a disadvantage to the minority
+    H.generate_groups(N, Nm) # same size groups
+    H.group_assign_scores(nodes=H.nodes, loc=0, scale=0.86142674) # general score distribution
+    H.group_add_scores(nodes=H.minority_nodes, loc=-1.43574282, scale=0.43071336) # add bias to unpriviledged group
     sampler = sampling_method(H, warn=False, use_exp_BTL=True)
     ranker = RankRecovery(H)
     ranking = None
-    for j in range(11):
+    for j in range(101):
         if isinstance(sampler, RankSampling):
-            sampler.apply(iter=100, k=1, ranking=ranking)
-        else: sampler.apply(iter=100, k=1)
+            sampler.apply(iter=10, k=1, ranking=ranking)
+        elif isinstance(sampler, OversampleMinority):
+            sampler.apply(iter=10, k=1, p=0.75)
+        else: sampler.apply(iter=10, k=1)
         ranking, other_nodes = ranker.apply() # by default, apply rankCentrality method
         if isinstance(sampler, RandomSampling): method = 'Random Sampling'
         elif isinstance(sampler, OversampleMinority): method = 'Oversample Minority'
@@ -294,9 +295,9 @@ def get_exposure(trial:int, sampling_method:Sampling, N=500, Nm=100):
         elif isinstance(sampler, GroupKnockoutSampling): method = 'GroupKnockout Sampling'
         if len(other_nodes) == 0:
             exp = exposure(H, ranking, H.majority)
-            exps += [(trial, j*100, exp, method, 'Majority')]
+            exps += [(trial, j*10, exp, method, 'Priviledged')]
             exp = exposure(H, ranking, H.minority)
-            exps += [(trial, j*100, exp, method, 'Minority')]
+            exps += [(trial, j*10, exp, method, 'Unpriviledged')]
     return exps
 
 
@@ -338,20 +339,31 @@ def get_normal_loss_bias(x, prob_maj, prob_stronger):
     sigma = x[1]
     myu_bias = x[2]
     sigma_bias = x[3]
-    stronger_result = _sep_stronger_prob_normal(myu, sigma, myu + myu_bias, (sigma**2 + sigma_bias**2)**0.5)
+    stronger_result = _sep_stronger_prob_normal(myu, sigma, myu + myu_bias, (sigma**2 + sigma_bias**2)**0.5, ratio=0.5)
     maj_result = _sep_majority_prob_normal(myu, sigma, myu + myu_bias, (sigma**2 + sigma_bias**2)**0.5)
     return np.linalg.norm(np.array([prob_maj, prob_stronger] - np.array([maj_result, stronger_result])))
 
 def get_normal_loss_bias_constraint(x, prob_maj, prob_stronger, _myu, _sigma_bias):
+    '''optimize with fixed values for myu_base and sigma_bias'''
     myu = _myu
     sigma = x[0]
     myu_bias = x[1]
     sigma_bias = _sigma_bias
-    stronger_result = _sep_stronger_prob_normal(myu, sigma, myu + myu_bias, (sigma**2 + sigma_bias**2)**0.5)
+    stronger_result = _sep_stronger_prob_normal(myu, sigma, myu + myu_bias, (sigma**2 + sigma_bias**2)**0.5, ratio=0.5)
+    maj_result = _sep_majority_prob_normal(myu, sigma, myu + myu_bias, (sigma**2 + sigma_bias**2)**0.5)
+    return np.linalg.norm(np.array([prob_maj, prob_stronger] - np.array([maj_result, stronger_result])))
+
+def get_normal_loss_bias_half(x, prob_maj, prob_stronger, _myu):
+    '''optimize with fixed value for myu_base and sigma_bias as sigma/2'''
+    myu = _myu
+    sigma = x[0]
+    myu_bias = x[1]
+    sigma_bias = x[0]/2
+    stronger_result = _sep_stronger_prob_normal(myu, sigma, myu + myu_bias, (sigma**2 + sigma_bias**2)**0.5, ratio=0.5)
     maj_result = _sep_majority_prob_normal(myu, sigma, myu + myu_bias, (sigma**2 + sigma_bias**2)**0.5)
     return np.linalg.norm(np.array([prob_maj, prob_stronger] - np.array([maj_result, stronger_result])))
 
 def get_sep_probs_normal_bias(myu, sigma, myu_bias, sigma_bias):
-    stronger_result = _sep_stronger_prob_normal(myu, sigma, myu + myu_bias, (sigma**2 + sigma_bias**2)**0.5)
+    stronger_result = _sep_stronger_prob_normal(myu, sigma, myu + myu_bias, (sigma**2 + sigma_bias**2)**0.5, ratio=0.5)
     maj_result = _sep_majority_prob_normal(myu, sigma, myu + myu_bias, (sigma**2 + sigma_bias**2)**0.5)
     return maj_result, stronger_result
