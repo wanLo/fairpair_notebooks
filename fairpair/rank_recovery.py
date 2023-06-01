@@ -91,24 +91,24 @@ class RankRecovery:
         - ranking: dict of nodes and their ranking results
         - other_nodes: list of all nodes NOT included in giant strongly connected component
         '''
-        connected_nodes = max(nx.strongly_connected_components(self.G), key=len) # get the giant connected component
-        connected_graph = self.G.subgraph(connected_nodes)
-        other_nodes = [node for node in self.G.nodes if node not in connected_nodes]
-
-        if len(other_nodes) == 0: # only apply ranking recovery if strongly connected
+        other_nodes = []
+        ranking = None
+        if nx.is_strongly_connected(self.G): # only apply ranking recovery if strongly connected
             if rank_using == 'fairPageRank':
                 ranking = fairPageRank(self.G, **kwargs)
-                ranking = dict(zip(connected_nodes, ranking))
+                ranking = dict(zip(self.G.nodes, ranking))
             else:
-                adjacency = nx.linalg.graphmatrix.adjacency_matrix(connected_graph, weight=self.weight_attr)
+                adjacency = nx.linalg.graphmatrix.adjacency_matrix(self.G, weight=self.weight_attr)
 
                 # The GNNRank implementation generally assumes i->j means "i beats j", while we mean the opposite
                 adjacency = adjacency.transpose()
                 
                 ranking = rank_using(adjacency, **kwargs)
                 ranking = [float(abs(score)) if isinstance(score, complex) else float(score) for score in ranking]
-                ranking = dict(zip(connected_nodes, ranking)) # nodes might have specific names, so we return a dict
-        else: ranking = None
+                ranking = dict(zip(self.G.nodes, ranking)) # nodes might have specific names, so we return a dict
+        else:
+            connected_nodes = max(nx.strongly_connected_components(self.G), key=len) # get the giant connected component
+            other_nodes = [node for node in self.G.nodes if node not in connected_nodes]
 
         return ranking, other_nodes
     

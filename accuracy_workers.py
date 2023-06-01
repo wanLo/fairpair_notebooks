@@ -34,17 +34,18 @@ def get_simulated_cutoff(trial:int, method:rankCentrality, N=400, Nm=200):
     for j in range(101):
         sampler.apply(iter=10, k=1)
         for cutoff in [0.4]:
-            # simulate cut-off
-            G = FairPairGraph()
-            edges = H.edges(data='weight')
-            edges = [(outgoing, incoming, 1) for outgoing, incoming, weight in edges if weight>=cutoff]
-            G.add_weighted_edges_from(edges)
-            ranker = RankRecovery(G)
             if method == 'fairPageRank':
                 name = method
-                ranking, other_nodes = ranker.apply(rank_using='fairPageRank', cutoff=0, path=f'data/tmp{trial}')
+                ranker = RankRecovery(H)
+                ranking, other_nodes = ranker.apply(rank_using='fairPageRank', cutoff=cutoff, path=f'data/tmp{trial}')
             else:
                 name = method.__name__
+                # simulate cut-off
+                G = FairPairGraph()
+                edges = H.edges(data='weight')
+                edges = [(outgoing, incoming, 1) for outgoing, incoming, weight in edges if weight>=cutoff]
+                G.add_weighted_edges_from(edges)
+                ranker = RankRecovery(G)
                 ranking, other_nodes = ranker.apply(rank_using=method) # by default, apply rankCentrality method
             if len(other_nodes) == 0:
                 tau = weighted_tau(H, ranking)
