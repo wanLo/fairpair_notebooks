@@ -80,6 +80,43 @@ class FairPairGraph(nx.DiGraph):
             scores_dict[node] += distr(n=1, **kwargs)[0]
         nx.function.set_node_attributes(self, scores_dict, attr)
 
+    def _update_scores(self):
+        scores_dict = nx.function.get_node_attributes(self, 'skill')
+        bias_dict = nx.function.get_node_attributes(self, 'bias') # get existing biases
+        for node in self.nodes: # update average perceived `scores` with new skills and existing biases
+            if not node in scores_dict:
+                scores_dict[node] = 0
+            if node in bias_dict:
+                scores_dict[node] += bias_dict[node]
+        nx.function.set_node_attributes(self, scores_dict, 'score') # write the scores
+
+
+    def assign_skills(self, distr=Distributions.normal_distr, **kwargs):
+        '''
+        Randomly draw ground-truth skills from a distribution and assign them to this graph's nodes
+
+        Parameters
+        ----------
+        - distr: distribution function with required keyword argument n (number of nodes)
+        - **kwargs: keyword arguments passed to distr function
+        '''
+        self.group_assign_scores(nodes=self.nodes, attr='skill', distr=distr, **kwargs) # overwrite the skills
+        self._update_scores()
+
+
+    def assign_bias(self, nodes:list, distr=Distributions.normal_distr, **kwargs):
+        '''
+        Randomly draw biases from a distribution and assign them to the nodes of a subgraph
+
+        Parameters
+        ----------
+        - nodes: list of nodes to assign biases to
+        - distr: distribution function with required keyword argument n (number of nodes)
+        - **kwargs: keyword arguments passed to distr function
+        '''
+        self.group_assign_scores(nodes=nodes, attr='bias', distr=distr, **kwargs) # overwrite the bias
+        self._update_scores()
+
 
     def compare_pair(self, i, j, k = 1, node_attr="score", weight_attr="weight", wins_attr="wins", seed: int | None = None):
         '''

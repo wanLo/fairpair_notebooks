@@ -64,7 +64,7 @@ def get_method_accuracy(trial:int, method:rankCentrality, N=400, Nm=200):
     ranker = RankRecovery(H)
     ranking = None
     for j in range(101):
-        sampler.apply(iter=10, k=1)
+        sampler.apply(iter=100, k=1)
         if method == 'fairPageRank':
             name = method
             ranking, other_nodes = ranker.apply(rank_using=method, path=f'data/tmp{trial}')
@@ -73,14 +73,14 @@ def get_method_accuracy(trial:int, method:rankCentrality, N=400, Nm=200):
             ranking, other_nodes = ranker.apply(rank_using=method) # by default, apply rankCentrality method
         if len(other_nodes) == 0:
             tau = weighted_tau(H, ranking)
-            accuracy.append((trial, j*10, tau, 'Overall', name))
+            accuracy.append((trial, j*100, tau, 'Overall', name))
             #tau = weighted_tau(H, ranking, H.majority)
-            #accuracy.append((trial, j*10, tau, 'Priviledged', method.__name__))
+            #accuracy.append((trial, j*10, tau, 'Priviledged', name))
             #tau = weighted_tau(H, ranking, H.minority)
-            #accuracy.append((trial, j*10, tau, 'Unpriviledged', method.__name__))
+            #accuracy.append((trial, j*10, tau, 'Unpriviledged', name))
             #tau = weighted_tau_separate(H, ranking, H.majority)
-            #accuracy.append((trial, j*10, tau[0], 'Priviledged within-group', method.__name__))
-            #accuracy.append((trial, j*10, tau[1], 'Between groups', method.__name__))
+            #accuracy.append((trial, j*10, tau[0], 'Priviledged within-group', name))
+            #accuracy.append((trial, j*10, tau[1], 'Between groups', name))
             #tau = weighted_tau_separate(H, ranking, H.minority, calc_between=False)
-            #accuracy.append((trial, j*10, tau[0], 'Unpriviledged within-group', method.__name__))
+            #accuracy.append((trial, j*10, tau[0], 'Unpriviledged within-group', name))
     return accuracy

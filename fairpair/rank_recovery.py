@@ -4,6 +4,7 @@ import os
 
 import pandas as pd
 import networkx as nx
+import scipy.sparse as sp
 
 from .fairgraph import FairPairGraph
 from .recovery_baselines import *
@@ -54,6 +55,12 @@ def fairPageRank(G:FairPairGraph, cutoff=0.4, phi=0.5, path='data/tmp'):
     ranking = [float(score) for score in ranking]
 
     return ranking
+
+
+def randomRankRecovery(A: sp.spmatrix, seed: int | None = None):
+    x, y = A.get_shape()
+    rng = np.random.default_rng(seed=seed)
+    return rng.random(x)
 
 
 class RankRecovery:

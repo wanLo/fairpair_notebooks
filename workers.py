@@ -28,7 +28,7 @@ def get_accuracy(trial:int, N=400, Nm=200):
     H = FairPairGraph()
     H.generate_groups(N, Nm) # same size groups
     H.group_assign_scores(nodes=H.nodes, loc=0, scale=0.86142674) # general score distribution
-    H.group_add_scores(nodes=H.minority_nodes, loc=-1.43574282, scale=0.43071336) # add bias to unpriviledged group
+    H.group_add_scores(nodes=H.minority_nodes, loc=-1.43574282, scale=0.43071336) # add bias to unprivileged group
     sampler = RankSampling(H, warn=False)
     ranker = RankRecovery(H)
     ranking = None
@@ -40,14 +40,14 @@ def get_accuracy(trial:int, N=400, Nm=200):
                 print(f'Strongly connected after {j*10} iterations.')
                 connected = True
             tau = weighted_tau(H, ranking, H.majority)
-            accuracy.append((trial, j*10, tau, 'Priviledged'))
+            accuracy.append((trial, j*10, tau, 'Privileged'))
             tau = weighted_tau(H, ranking, H.minority)
-            accuracy.append((trial, j*10, tau, 'Unpriviledged'))
+            accuracy.append((trial, j*10, tau, 'Unprivileged'))
             tau = weighted_tau_separate(H, ranking, H.majority)
-            accuracy.append((trial, j*10, tau[0], 'Priviledged within-group'))
+            accuracy.append((trial, j*10, tau[0], 'Privileged within-group'))
             accuracy.append((trial, j*10, tau[1], 'Between groups'))
             tau = weighted_tau_separate(H, ranking, H.minority, calc_between=False)
-            accuracy.append((trial, j*10, tau[0], 'Unpriviledged within-group'))
+            accuracy.append((trial, j*10, tau[0], 'Unprivileged within-group'))
     return accuracy
 
 
@@ -171,7 +171,7 @@ def get_topk_tau(trial:int, sampling_method:Sampling, topk=[10,50,100,200,400], 
     H = FairPairGraph()
     H.generate_groups(N, Nm) # same size groups
     H.group_assign_scores(nodes=H.nodes, loc=0, scale=0.86142674) # general score distribution
-    H.group_add_scores(nodes=H.minority_nodes, loc=-1.43574282, scale=0.43071336) # add bias to unpriviledged group
+    H.group_add_scores(nodes=H.minority_nodes, loc=-1.43574282, scale=0.43071336) # add bias to unprivileged group
     sampler = sampling_method(H, warn=False, use_exp_BTL=True)
     ranker = RankRecovery(H)
     ranking = None
@@ -277,7 +277,7 @@ def get_exposure(trial:int, sampling_method:Sampling, N=400, Nm=200):
     H = FairPairGraph()
     H.generate_groups(N, Nm) # same size groups
     H.group_assign_scores(nodes=H.nodes, loc=0, scale=0.86142674) # general score distribution
-    H.group_add_scores(nodes=H.minority_nodes, loc=-1.43574282, scale=0.43071336) # add bias to unpriviledged group
+    H.group_add_scores(nodes=H.minority_nodes, loc=-1.43574282, scale=0.43071336) # add bias to unprivileged group
     sampler = sampling_method(H, warn=False, use_exp_BTL=True)
     ranker = RankRecovery(H)
     ranking = None
@@ -295,9 +295,9 @@ def get_exposure(trial:int, sampling_method:Sampling, N=400, Nm=200):
         elif isinstance(sampler, GroupKnockoutSampling): method = 'GroupKnockout Sampling'
         if len(other_nodes) == 0:
             exp = exposure(H, ranking, H.majority)
-            exps += [(trial, j*10, exp, method, 'Priviledged')]
+            exps += [(trial, j*10, exp, method, 'Privileged')]
             exp = exposure(H, ranking, H.minority)
-            exps += [(trial, j*10, exp, method, 'Unpriviledged')]
+            exps += [(trial, j*10, exp, method, 'Unprivileged')]
     return exps
 
 
