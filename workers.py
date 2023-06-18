@@ -27,14 +27,15 @@ def get_accuracy(trial:int, N=400, Nm=200):
     connected = False
     H = FairPairGraph()
     H.generate_groups(N, Nm) # same size groups
-    H.group_assign_scores(nodes=H.nodes, loc=0, scale=0.86142674) # general score distribution
-    H.group_add_scores(nodes=H.minority_nodes, loc=-1.43574282, scale=0.43071336) # add bias to unprivileged group
-    sampler = RankSampling(H, warn=False)
+    H.assign_skills(loc=0, scale=0.86142674) # general skill distribution
+    H.assign_bias(nodes=H.minority_nodes, loc=-1.43574282, scale=0.43071336) # add bias to unprivileged group
+    #H.assign_bias(nodes=H.minority_nodes, loc=-1.43574282, scale=0)
+    sampler = RandomSampling(H, warn=False)
     ranker = RankRecovery(H)
     ranking = None
     for j in range(100):
-        sampler.apply(iter=10, k=1, ranking=ranking) # p=0.75
-        ranking, other_nodes = ranker.apply() # by default, apply rankCentrality method
+        sampler.apply(iter=10, k=1) # p=0.75
+        ranking, other_nodes = ranker.apply(rank_using='fairPageRank', path=f'data/tmp{trial}') # by default, apply rankCentrality method
         if len(other_nodes) == 0:
             if not connected:
                 print(f'Strongly connected after {j*10} iterations.')

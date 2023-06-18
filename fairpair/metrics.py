@@ -135,7 +135,7 @@ def spearmanr(graph:FairPairGraph, ranking:dict, subgraph:FairPairGraph | None =
     return stats.pearsonr(ranks_true, ranks_predicted)
 
 
-def weighted_tau(graph:FairPairGraph, ranking:dict, subgraph:FairPairGraph | None = None, score_attr='score') -> float:
+def weighted_tau(graph:FairPairGraph, ranking:dict, subgraph:FairPairGraph | None = None, score_attr='skill') -> float:
     '''
     Calculates the weighted Kemedy distance for a `ranking` given the
     "ground-truth" ranking from initial scores of `graph`.
@@ -159,10 +159,10 @@ def weighted_tau(graph:FairPairGraph, ranking:dict, subgraph:FairPairGraph | Non
     worst_case_sum = 0
     subgraph_nodes = list(subgraph.nodes) # must faster to do this only once
     complementary_nodes = [node for node in graph.nodes if node not in subgraph.nodes]
-    for i in subgraph_nodes:
+    for num, i in enumerate(subgraph_nodes):
         # consider within-group pairs till before the diagonal
         # and pairs with complementary nodes only one-way
-        for j in subgraph_nodes[:i] + complementary_nodes:
+        for j in subgraph_nodes[:num] + complementary_nodes:
             diff = (base_scores[i]-base_scores[j]) ** 2
             worst_case_sum += diff
             if (base_scores[i]-base_scores[j])*(ranking[i]-ranking[j]) > 0:
@@ -178,7 +178,7 @@ def weighted_tau(graph:FairPairGraph, ranking:dict, subgraph:FairPairGraph | Non
 
 
 def weighted_tau_separate(graph:FairPairGraph, ranking:dict, subgraph:FairPairGraph | None = None,
-                          score_attr='score', calc_within=True, calc_between=True) -> Tuple[float, float]:
+                          score_attr='skill', calc_within=True, calc_between=True) -> Tuple[float, float]:
     '''
     Calculates the within-group and the between-group weighted Kemedy distance for a `ranking` given the
     "ground-truth" ranking from initial scores of `graph`.
@@ -210,9 +210,9 @@ def weighted_tau_separate(graph:FairPairGraph, ranking:dict, subgraph:FairPairGr
     if calc_within:
         discordant_sum_int = 0
         worst_case_sum_int = 0
-        for i in subgraph_nodes:
+        for num, i in enumerate(subgraph_nodes):
             # consider within-group pairs till before the diagonal
-            for j in subgraph_nodes[:i]:
+            for j in subgraph_nodes[:num]:
                 diff = (base_scores[i]-base_scores[j]) ** 2
                 worst_case_sum_int += diff
                 if (base_scores[i]-base_scores[j])*(ranking[i]-ranking[j]) > 0:
@@ -237,7 +237,7 @@ def weighted_tau_separate(graph:FairPairGraph, ranking:dict, subgraph:FairPairGr
     return tau_within, tau_between
 
 
-def weighted_individual_tau(graph:FairPairGraph, ranking:dict, subgraph:FairPairGraph | None = None, score_attr='score') -> list[float]:
+def weighted_individual_tau(graph:FairPairGraph, ranking:dict, subgraph:FairPairGraph | None = None, score_attr='skill') -> list[float]:
     '''
     Calculates the weighted Kemedy distance for each node in a `ranking` separately,
     given the "ground-truth" ranking from initial scores of `graph`.
@@ -275,7 +275,7 @@ def weighted_individual_tau(graph:FairPairGraph, ranking:dict, subgraph:FairPair
 
 
 def weighted_topk_tau(graph:FairPairGraph, ranking:dict, subgraph:FairPairGraph | None = None,
-                      topk=[10,20,50,100,200,500], score_attr='score') -> list[float]:
+                      topk=[10,20,50,100,200,500], score_attr='skill') -> list[float]:
     '''
     Calculates the weighted Kemedy distance for the top k nodes in a `ranking`,
     given the "ground-truth" ranking from initial scores of `graph`.
