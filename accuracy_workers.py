@@ -57,9 +57,8 @@ def get_method_accuracy(trial:int, method:rankCentrality, N=400, Nm=200):
     accuracy = []
     H = FairPairGraph()
     H.generate_groups(N, Nm) # same size groups
-    H.group_assign_scores(nodes=H.nodes, loc=0, scale=0.86142674) # general score distribution
-    #H.group_add_scores(nodes=H.minority_nodes, loc=-1.43574282, scale=0.43071336) # add bias to unpriviledged group
-    #H.group_add_scores(nodes=H.minority_nodes, loc=-10, scale=0.43071336)
+    H.assign_skills(loc=0, scale=0.86142674) # general skill distribution
+    H.assign_bias(nodes=H.minority_nodes, loc=-1.43574282, scale=0.43071336) # add bias to unprivileged group
     sampler = RandomSampling(H, warn=False)
     ranker = RankRecovery(H)
     ranking = None
