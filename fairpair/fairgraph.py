@@ -1,5 +1,4 @@
-from functools import cached_property
-from typing import List
+from typing import List, Union
 
 import numpy as np
 import networkx as nx
@@ -26,7 +25,7 @@ class FairPairGraph(nx.DiGraph):
         self.label_minority(Nm)
 
 
-    def label_minority(self, Nm: int, attr="minority", random=False, seed: int | None = None):
+    def label_minority(self, Nm: int, attr="minority", random=False, seed: Union[int, None] = None):
         '''
         Label a subset of nodes as minority
 
@@ -118,7 +117,7 @@ class FairPairGraph(nx.DiGraph):
         self._update_scores()
 
 
-    def compare_pair(self, i, j, k = 1, node_attr="score", weight_attr="weight", wins_attr="wins", seed: int | None = None):
+    def compare_pair(self, i, j, k = 1, node_attr="score", weight_attr="weight", wins_attr="wins", seed: Union[int, None] = None):
         '''
         Compares nodes i and j using the BTL-formula, k times (binomial distribution).
 
@@ -152,7 +151,7 @@ class FairPairGraph(nx.DiGraph):
         self.add_edge(j, i, **edge_j_i)
     
 
-    def compare_pair_exp(self, i, j, k = 1, node_attr="score", weight_attr="weight", wins_attr="wins", seed: int | None = None):
+    def compare_pair_exp(self, i, j, k = 1, node_attr="score", weight_attr="weight", wins_attr="wins", seed: Union[int, None] = None):
         '''
         Compares nodes i and j using the BTL-formula, k times (binomial distribution).
         Uses exp(score) for weights of the nodes, so the BTL-formula is also called "softmax" in this case.

@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, Union
 from pathlib import Path
 import os
 
@@ -57,7 +57,7 @@ def fairPageRank(G:FairPairGraph, cutoff=0.4, phi=0.5, path='data/tmp'):
     return ranking
 
 
-def randomRankRecovery(A: sp.spmatrix, seed: int | None = None):
+def randomRankRecovery(A: sp.spmatrix, seed: Union[int, None] = None):
     x, y = A.get_shape()
     rng = np.random.default_rng(seed=seed)
     return rng.random(x)

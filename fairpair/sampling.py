@@ -1,4 +1,5 @@
 import warnings
+from typing import Union
 
 import numpy as np
 import networkx as nx
@@ -9,7 +10,7 @@ import pandas as pd
 from .fairgraph import FairPairGraph
 
 
-def random_list_to_pairs(G:FairPairGraph, nodes:list, seed: int | None = None, warn=True):
+def random_list_to_pairs(G:FairPairGraph, nodes:list, seed: Union[int, None] = None, warn=True):
     '''Split a list of nodes from FairPairGraph G into a list of disjoint pairs.'''
     arr = np.array(nodes)
     rng = np.random.default_rng(seed=seed)
@@ -52,7 +53,7 @@ class Sampling:
         '''Returns the FairPairGraph this Sampling is applied to.'''
         return self.G
     
-    def _split_and_compare(self, selected_nodes:list, k:int, iteration=0, seed: int | None = None):
+    def _split_and_compare(self, selected_nodes:list, k:int, iteration=0, seed: Union[int, None] = None):
         '''A helper for running k comparisons on selected nodes'''
         pairs = self.split_using(G=self.G, nodes=selected_nodes, seed=seed, warn=self.warn)
         for (i, j) in pairs:
@@ -89,7 +90,7 @@ class Sampling:
 
 class RandomSampling(Sampling):
 
-    def apply(self, iter=1, k=10, f=0.2, seed: int | None = None):
+    def apply(self, iter=1, k=10, f=0.2, seed: Union[int, None] = None):
         '''
         Apply random sampling with uniform probability
 
@@ -110,7 +111,7 @@ class RandomSampling(Sampling):
 
 class ProbKnockoutSampling(Sampling):
 
-    def apply(self, iter=1, k=10, f=0.2, min_prob=0.1, seed: int | None = None):
+    def apply(self, iter=1, k=10, f=0.2, min_prob=0.1, seed: Union[int, None] = None):
         '''
         Select nodes probabilistically based on their ratio of wins (success rate) so far.
 
@@ -143,7 +144,7 @@ class ProbKnockoutSampling(Sampling):
 
 class RankSampling(Sampling):
 
-    def apply(self, iter=1, k=10, f=0.2, min_prob=0.0001, ranking=None, seed: int | None = None):
+    def apply(self, iter=1, k=10, f=0.2, min_prob=0.0001, ranking=None, seed: Union[int, None] = None):
         '''
         Select nodes probabilistically based on their rank so far.
 
@@ -175,7 +176,7 @@ class RankSampling(Sampling):
 
 class GroupKnockoutSampling(Sampling):
 
-    def apply(self, iter=1, k=10, f=0.2, seed: int | None = None):
+    def apply(self, iter=1, k=10, f=0.2, seed: Union[int, None] = None):
         '''
         Select nodes probabilistically based on the highest ratio of wins (success rate) in their group (role models) so far.
 
@@ -214,7 +215,7 @@ class GroupKnockoutSampling(Sampling):
 
 class OversampleMinority(Sampling):
 
-    def apply(self, iter=1, k=10, f=0.2, p=0.5, seed: int | None = None):
+    def apply(self, iter=1, k=10, f=0.2, p=0.5, seed: Union[int, None] = None):
         '''
         Select n nodes randomly, with a share of p nodes from the minority
 
@@ -239,7 +240,7 @@ class OversampleMinority(Sampling):
 
 class StargraphSampling(Sampling):
 
-    def apply(self, iter=1, k=10, f=0.2, node: object = 0, node_prob: float | None = 1.0, seed: int | None = None):
+    def apply(self, iter=1, k=10, f=0.2, node: object = 0, node_prob: Union[float, None] = 1.0, seed: Union[int, None] = None):
         '''
         Select edges randomly, but for each pair, a designated `node` has a higher chance of being selected.
         In the default case of `node_prob=1.0`, this creates a star graph.
