@@ -9,7 +9,7 @@ setup(
     packages=['fairpair'],
     install_requires=[
         'pandas>=1.3.5',
-        'numpy>=1.21.6',
+        'numpy>=1.20.3',
         'networkx>=2.6.3',
         'seaborn>=0.12.2',
         'scikit-learn>=1.0.2',
