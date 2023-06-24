@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 from .fairgraph import FairPairGraph
+from .metrics import scores_to_rank
 
 
 def random_list_to_pairs(G:FairPairGraph, nodes:list, seed: Union[int, None] = None, warn=True):
@@ -144,7 +145,7 @@ class ProbKnockoutSampling(Sampling):
 
 class RankSampling(Sampling):
 
-    def apply(self, iter=1, k=10, f=0.2, min_prob=0.0001, ranking=None, seed: Union[int, None] = None):
+    def apply(self, iter=1, k=10, f=0.2, min_prob=1, ranking=None, factor=6, seed: Union[int, None] = None):
         '''
         Select nodes probabilistically based on their rank so far.
 
@@ -153,20 +154,19 @@ class RankSampling(Sampling):
         - iter: how many iterations of ProbKnockout sampling to perform
         - k: how often each sampled pair will be compared per iteration
         - f: fraction of nodes to sample in each iteration
-        - min_prob: minimal probability of a node being selected (avoids being stuck at zero)
+        - min_prob: minimal (non-normalized) probability of a node being selected (avoids being stuck at zero)
         - ranking: obtained after the last iteration of sampling, leave None for equal chances
+        - factor: create probabilities in (0, factor) before applying exponentiation and normalizing to sum=1
         - seed: seed for the random number generator
         '''
         n = int(len(self.G)*f) # how many nodes to sample
         rng = np.random.default_rng(seed=seed)
         for iteration in range(iter):
             if ranking is not None:
+                ranking = scores_to_rank(ranking, invert=False) # we want higher ranks for the top for higher probabilities
                 rates = [ranking[node] for node in self.G.nodes] # ranking result in order of self.G.nodes
-                # rescale rates to (0,1) to eliminate negative scores
-                max_rate = max(rates)
-                min_rate = min(rates)
-                normalized_rates = [(rate-min_rate)/(max_rate-min_rate)*(1-min_prob)+min_prob for rate in rates] # min-max scaler
-                normalized_rates = [rate/sum(normalized_rates) for rate in normalized_rates] # must sum to 1
+                rates = [np.exp(rate/len(rates)*factor)+min_prob for rate in rates] # rescale to (0,factor) to finetune exponential importance
+                normalized_rates = [rate/sum(rates) for rate in rates] # must sum to 1
                 selected_nodes = rng.choice(self.G.nodes, n, replace=False, p=normalized_rates)
             else:
                 # all node get equal chance of being selected

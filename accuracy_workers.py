@@ -264,6 +264,7 @@ def get_GNNRank_weightedTau(trial:int, samplingMethod:RandomSampling, apply_bias
             exp = exposure(H, ranking, H.minority)
             accuracy.append((trial, j*step+step, exp, apply_bias, samplingMethod.__name__, 'exposure', 'Unprivileged'))
         
-        if j%10 == 0: print(f'{samplingMethod.__name__}, with{"out" if not apply_bias else ""}bias, trial {trial}: finished {j*step+step} iterations.')
+        if j%10 == 9:
+            print(f'{samplingMethod.__name__}, with{"out" if not apply_bias else ""}bias, trial {trial}: finished {j*step+step} iterations.')
     
     return accuracy

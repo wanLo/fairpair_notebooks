@@ -11,7 +11,7 @@ from .fairgraph import FairPairGraph
 
 def scores_to_rank(ranking:dict, invert=True) -> dict:
     '''A helper to convert a ranking from scores to ranks'''
-    # convert ranking from {node:score} dict to [(node, rank)] list
+    # convert ranking from {node:score} dict to {node:rank} dict
     rank_data = stats.rankdata(list(ranking.values()), method='ordinal') # use ordinal method to avoid same rank for ties
     if invert:
         rank_data = [int(max(rank_data) - rank) for rank in rank_data] # we want 0 to be the highest rank
