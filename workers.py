@@ -273,32 +273,29 @@ def get_sep_probs_normal(myu_maj, sigma_maj, myu_min, sigma_min, ratio=0.2):
     return myu_maj, sigma_maj, myu_min, sigma_min, maj_result, stronger_result
 
 
-def get_exposure(trial:int, sampling_method:Sampling, N=400, Nm=200):
+def get_exposure(trial:int, sampling_method:Sampling, apply_bias:bool):
     exps = []
     H = FairPairGraph()
-    H.generate_groups(N, Nm) # same size groups
-    H.group_assign_scores(nodes=H.nodes, loc=0, scale=0.86142674) # general score distribution
-    H.group_add_scores(nodes=H.minority_nodes, loc=-1.43574282, scale=0.43071336) # add bias to unprivileged group
-    sampler = sampling_method(H, warn=False, use_exp_BTL=True)
+    H.generate_groups(400, 200) # same size groups
+    H.assign_skills(loc=0, scale=0.86142674) # general skill distribution
+    if apply_bias:
+        H.assign_bias(nodes=H.minority_nodes, loc=-1.43574282, scale=0.43071336) # add bias to unprivileged group
+    sampler = sampling_method(H, warn=False)
     ranker = RankRecovery(H)
     ranking = None
-    for j in range(101):
+    step = 10
+    for j in range(int(1000/step)):
         if isinstance(sampler, RankSampling):
-            sampler.apply(iter=10, k=1, ranking=ranking)
+            sampler.apply(iter=step, k=1, ranking=ranking)
         elif isinstance(sampler, OversampleMinority):
-            sampler.apply(iter=10, k=1, p=0.75)
-        else: sampler.apply(iter=10, k=1)
-        ranking, other_nodes = ranker.apply() # by default, apply rankCentrality method
-        if isinstance(sampler, RandomSampling): method = 'Random Sampling'
-        elif isinstance(sampler, OversampleMinority): method = 'Oversample Minority'
-        elif isinstance(sampler, ProbKnockoutSampling): method = 'ProbKnockout Sampling'
-        elif isinstance(sampler, RankSampling): method = 'Rank Sampling'
-        elif isinstance(sampler, GroupKnockoutSampling): method = 'GroupKnockout Sampling'
+            sampler.apply(iter=step, k=1, p=0.75)
+        else: sampler.apply(iter=step, k=1)
+        ranking, other_nodes = ranker.apply(rank_using=davidScore) # by default, apply rankCentrality method
         if len(other_nodes) == 0:
             exp = exposure(H, ranking, H.majority)
-            exps += [(trial, j*10, exp, method, 'Privileged')]
+            exps += [(trial, j*step+step, exp, apply_bias, sampling_method.__name__, 'Privileged')]
             exp = exposure(H, ranking, H.minority)
-            exps += [(trial, j*10, exp, method, 'Unprivileged')]
+            exps += [(trial, j*step+step, exp, apply_bias, sampling_method.__name__, 'Unprivileged')]
     return exps
 
 
