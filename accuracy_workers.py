@@ -1,15 +1,6 @@
-from scipy.stats import norm
-from scipy import integrate
-import mpmath
 import numpy as np
-import torch
 
 from fairpair import *
-
-import sys
-sys.path.append('../GNNRank/')
-from src.param_parser import ArgsNamespace # just import the class, not the parser
-from src.Trainer import Trainer
 
 def get_cutoff_accuracy(trial:int, N=400, Nm=200):
     accuracy = []
@@ -89,7 +80,6 @@ def get_method_accuracy(trial:int, samplingMethod=RandomSampling, ranking_method
             else:
                 ranker_name = ranking_method.__name__
                 ranking, other_nodes = ranker.apply(rank_using=ranking_method)
-
 
             tau = weighted_tau(H, ranking)
             accuracy.append((trial, j*step+step, tau, apply_bias, samplingMethod.__name__, ranker_name, 'tau', 'Overall'))
