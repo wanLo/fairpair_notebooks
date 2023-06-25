@@ -290,7 +290,7 @@ def get_exposure(trial:int, sampling_method:Sampling, apply_bias:bool):
         elif isinstance(sampler, OversampleMinority):
             sampler.apply(iter=step, k=1, p=0.75)
         else: sampler.apply(iter=step, k=1)
-        ranking, other_nodes = ranker.apply(rank_using=davidScore) # by default, apply rankCentrality method
+        ranking, other_nodes = ranker.apply() # by default, apply rankCentrality method
         if len(other_nodes) == 0:
             exp = exposure(H, ranking, H.majority)
             exps += [(trial, j*step+step, exp, apply_bias, sampling_method.__name__, 'Privileged')]
@@ -365,3 +365,61 @@ def get_sep_probs_normal_bias(myu, sigma, myu_bias, sigma_bias):
     stronger_result = _sep_stronger_prob_normal(myu, sigma, myu + myu_bias, (sigma**2 + sigma_bias**2)**0.5, ratio=0.5)
     maj_result = _sep_majority_prob_normal(myu, sigma, myu + myu_bias, (sigma**2 + sigma_bias**2)**0.5)
     return maj_result, stronger_result
+
+
+def get_correlations(samplingMethod:RandomSampling, apply_bias:bool, rank_using=davidScore):
+
+    # create a new graph for inference
+    # fix seed=42 for reproducibility of single plots
+    H = FairPairGraph()
+    H.generate_groups(400, 200) # same size groups
+    H.assign_skills(loc=0, scale=0.86142674, seed=42) # general skill distribution
+    if apply_bias:
+        H.assign_bias(nodes=H.minority_nodes, loc=-1.43574282, scale=0.43071336, seed=42) # add bias to unprivileged group
+    
+    sampler = samplingMethod(H, warn=False)
+    ranker = RankRecovery(H)
+
+    ranking = None
+    step = 10
+    ranks = []
+    # gradually infer ranking giving the initially trained model
+    for j in range(int(1000/step)):
+
+        if samplingMethod.__name__ == 'OversampleMinority':
+            sampler.apply(iter=step, k=1, p=0.75)
+        elif samplingMethod.__name__ == 'RankSampling':
+            sampler.apply(iter=step, k=1, ranking=ranking)
+        else:
+            sampler.apply(iter=step, k=1)
+        
+        if (nx.is_strongly_connected(H)):
+
+            if rank_using == 'fairPageRank':
+                ranker_name = 'Fairness-Aware PageRank'
+                if samplingMethod.__name__ == 'RandomSampling' and apply_bias: path=f'data/tmp0'
+                elif samplingMethod.__name__ == 'RandomSampling' and not apply_bias: path=f'data/tmp1'
+                elif samplingMethod.__name__ == 'OversampleMinority' and apply_bias: path=f'data/tmp2'
+                elif samplingMethod.__name__ == 'OversampleMinority' and not apply_bias: path=f'data/tmp3'
+                elif samplingMethod.__name__ == 'RankSampling' and apply_bias: path=f'data/tmp4'
+                elif samplingMethod.__name__ == 'RankSampling' and not apply_bias: path=f'data/tmp5'
+                ranking, other_nodes = ranker.apply(rank_using=rank_using, path=path)
+            elif rank_using.__name__ == 'davidScore':
+                ranker_name = "David's Score"
+                ranking, other_nodes = ranker.apply(rank_using=rank_using)
+            elif rank_using.__name__ == 'rankCentrality':
+                ranker_name = "RankCentrality"
+                ranking, other_nodes = ranker.apply(rank_using=rank_using)
+
+            ranking_as_ranks = scores_to_rank(ranking, invert=True)
+            for node, data in H.majority.nodes(data=True):
+                ranks.append((j*step+step, data['skill'], data['score'], ranking_as_ranks[node], 'Privileged',
+                              samplingMethod.__name__, ranker_name, apply_bias))
+            for node, data in H.minority.nodes(data=True):
+                ranks.append((j*step+step, data['skill'], data['score'], ranking_as_ranks[node], 'Unprivileged',
+                              samplingMethod.__name__, ranker_name, apply_bias))
+        
+        if j%10 == 9:
+            print(f'{samplingMethod.__name__}, with{"out" if not apply_bias else ""} bias, {ranker_name}: finished {j*step+step} iterations.')
+    
+    return ranks
