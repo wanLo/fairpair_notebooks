@@ -95,7 +95,7 @@ def syncRank(A):
 
 def syncRank_angle(A):
     # update the meaning of a directed edge by tranpose, edited 20210725
-    A = A.transpose()
+    #A = A.transpose()
 
     N = A.shape[1]
 
@@ -334,6 +334,15 @@ def serialRank(A):
     L = sp.diags(np.array(S.sum(1)).flatten()) - S
     _, V = sp.linalg.eigs(L.asfptype(),2,which='SM')
     serr = np.real(V[:,1])
+
+    # get the highest and lowest mean degree as an estimate for the ranking orientation
+    sum_y = A.sum(axis=1)
+    num_y = A.ceil().sum(axis=1) # values are in (0,1), so we get the number of non-zero entries per row
+    max_y = np.argmax(sum_y/(num_y + 1)) # add 1 to avoid dividing by zero
+    min_y = np.argmin(sum_y/(num_y + 1))
+    # if the orientation is reversed, flip the ranking scores
+    if serr[max_y] < serr[min_y]:
+        serr *= -1
 
     return serr
 
