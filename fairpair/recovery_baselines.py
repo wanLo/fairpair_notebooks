@@ -349,7 +349,7 @@ def serialRank(A):
 def serialRank_matrix(A):
     # In serialRank, C(i,j) = 1 if j was preferred over i, so we need to transpose A.
     A = A.transpose()
-    C = (A-A.transpose()).sign()
+    C = (A-A.transpose()) #.sign()
     n = A.shape[0]
     S = C.dot(C.transpose())/2
     S.data += n/2

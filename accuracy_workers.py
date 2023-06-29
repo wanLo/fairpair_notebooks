@@ -63,7 +63,7 @@ def get_method_accuracy(trial:int, samplingMethod=RandomSampling, ranking_method
 
     ranking = None
     step = 10
-    for j in range(int(1000/step)):
+    for j in range(int(3000/step)):
         
         if samplingMethod.__name__ == 'OversampleMinority':
             sampler.apply(iter=step, k=1, p=0.75)
