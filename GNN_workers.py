@@ -149,9 +149,9 @@ def get_GNNRank_weightedTau(trial:int, samplingMethod:RandomSampling, apply_bias
     
     sampler = samplingMethod(H, warn=False)
     ranking = None
-    step = 10
+    step = 20
     # gradually infer ranking giving the initially trained model
-    for j in range(int(1000/step)):
+    for j in range(int(3000/step)):
 
         if samplingMethod.__name__ == 'OversampleMinority':
             sampler.apply(iter=step, k=1, p=0.75)
@@ -185,6 +185,9 @@ def get_GNNRank_weightedTau(trial:int, samplingMethod:RandomSampling, apply_bias
         if j%10 == 9:
             print(f'{samplingMethod.__name__}, with{"out" if not apply_bias else ""}bias, trial {trial}: finished {j*step+step} iterations.')
     
+    accuracy_df = pd.DataFrame(accuracy, columns=['trial', 'iteration', 'value', 'bias_applied', 'sampling method', 'metric', 'group'])
+    accuracy_df.to_csv(f'./data/GNNRank_intermed/trial{trial}_{samplingMethod.__name__}_with{"" if apply_bias else "out"}Bias.csv', index=False)
+
     return accuracy
 
 
