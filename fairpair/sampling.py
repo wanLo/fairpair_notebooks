@@ -49,12 +49,13 @@ class Sampling:
         self.log_comparisons = log_comparisons
         self.success_over_time = pd.DataFrame()
         self.log_success = log_success
+        self.iteration = 0
     
     def get_graph(self):
         '''Returns the FairPairGraph this Sampling is applied to.'''
         return self.G
     
-    def _split_and_compare(self, selected_nodes:list, k:int, iteration=0, seed: Union[int, None] = None):
+    def _split_and_compare(self, selected_nodes:list, k:int, seed: Union[int, None] = None):
         '''A helper for running k comparisons on selected nodes'''
         pairs = self.split_using(G=self.G, nodes=selected_nodes, seed=seed, warn=self.warn)
         for (i, j) in pairs:
@@ -63,30 +64,33 @@ class Sampling:
             else:
                 self.G.compare_pair(i, j, k, seed=seed)
         # logging
+        self.iteration += 1
         if self.log_comparisons:
             for node, comparisons in self.G.comparisons:
-                df = pd.DataFrame({'node': node, 'minority': self.G.nodes[node]['minority'], 'iteration': iteration, 'comparisons': comparisons}, index=[0])
+                df = pd.DataFrame({'node': node, 'minority': self.G.nodes[node]['minority'], 'iteration': self.iteration, 'comparisons': comparisons}, index=[0])
                 self.comparisons_over_time = pd.concat([self.comparisons_over_time, df], ignore_index=True)
         if self.log_success:
             for node, success in self.G.success_rates:
-                df = pd.DataFrame({'node': node, 'minority': self.G.nodes[node]['minority'], 'iteration': iteration, 'success': success}, index=[0])
+                df = pd.DataFrame({'node': node, 'minority': self.G.nodes[node]['minority'], 'iteration': self.iteration, 'success': success}, index=[0])
                 self.success_over_time = pd.concat([self.success_over_time, df], ignore_index=True)
 
-    def plot_comparisons_over_time(self):
+    def plot_comparisons_over_time(self, save_to='comparisons.png'):
         '''Plots the #comparisons for each node over time, colored by group membership'''
-        self._plot_over_time(data=self.comparisons_over_time, y='comparisons', units='node', estimator=None)
+        self._plot_over_time(data=self.comparisons_over_time, save_to=save_to, y='comparisons', ylim=(0,70), alpha=0.3, units='node', estimator=None)
     
-    def plot_success_over_time(self):
+    def plot_success_over_time(self, save_to='success.png'):
         '''Plots the success rate for each node over time, colored by group membership'''
-        self._plot_over_time(data=self.success_over_time, y='success')
+        self._plot_over_time(data=self.success_over_time, save_to=save_to, y='success', ylim=(0,0.8))
     
-    def _plot_over_time(self, data:pd.DataFrame, y:str, **kwargs):
+    def _plot_over_time(self, data:pd.DataFrame, save_to:str, y:str, ylim=(None, None), alpha=1, **kwargs):
         '''A helper for plotting stats over time'''
         ax = sns.lineplot(data=data, x='iteration', y=y, hue='minority', **kwargs)
-        ax.legend(ax.get_legend().legendHandles, ['Majority', 'Minority'], title=None, frameon=False)
-        plt.setp(ax.lines, alpha=0.3)
+        ax.legend(ax.get_legend().legendHandles, ['Privileged', 'Unprivileged'], title=None, frameon=False)
+        ax.set(ylim=ylim, xlim=(0, 100))
+        plt.setp(ax.lines, alpha=alpha)
         sns.despine()
-        plt.show()
+        plt.savefig(save_to, dpi=150, bbox_inches="tight")
+        plt.close()
 
 
 class RandomSampling(Sampling):
@@ -107,7 +111,7 @@ class RandomSampling(Sampling):
         for iteration in range(iter):
             #selected_nodes = [node for node in self.G.nodes if rng.binomial(1,p)]
             selected_nodes = rng.choice(self.G.nodes, n, replace=False)
-            self._split_and_compare(selected_nodes, k, iteration, seed)
+            self._split_and_compare(selected_nodes, k, seed)
 
 
 class ProbKnockoutSampling(Sampling):
@@ -140,7 +144,7 @@ class ProbKnockoutSampling(Sampling):
                 # all node get equal chance of being selected
                 selected_nodes = rng.choice(self.G.nodes, n, replace=False)
             #selected_nodes = [node for node, prob in normalized_success if rng.binomial(1,prob)]
-            self._split_and_compare(selected_nodes, k, iteration, seed)
+            self._split_and_compare(selected_nodes, k, seed)
 
 
 class RankSampling(Sampling):
@@ -171,7 +175,7 @@ class RankSampling(Sampling):
             else:
                 # all node get equal chance of being selected
                 selected_nodes = rng.choice(self.G.nodes, n, replace=False)
-            self._split_and_compare(selected_nodes, k, iteration, seed)
+            self._split_and_compare(selected_nodes, k, seed)
 
 
 class GroupKnockoutSampling(Sampling):
@@ -210,7 +214,7 @@ class GroupKnockoutSampling(Sampling):
                 # all node get equal chance of being selected
                 selected_nodes = rng.choice(self.G.nodes, n, replace=False)
             #selected_nodes = [node for node, prob in normalized_success if rng.binomial(1,prob)]
-            self._split_and_compare(selected_nodes, k, iteration, seed)
+            self._split_and_compare(selected_nodes, k, seed)
 
 
 class OversampleMinority(Sampling):
@@ -235,7 +239,7 @@ class OversampleMinority(Sampling):
             selected_minority = rng.choice(self.G.minority_nodes, from_minority, replace=False)
             selected_majority = rng.choice(self.G.majority_nodes, n-from_minority, replace=False)
             selected_nodes = np.concatenate((selected_minority, selected_majority))
-            self._split_and_compare(selected_nodes, k, iteration, seed)
+            self._split_and_compare(selected_nodes, k, seed)
 
 
 class StargraphSampling(Sampling):
