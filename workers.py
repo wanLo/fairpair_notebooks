@@ -7,18 +7,23 @@ from fairpair import *
 
 #### just some functions that had to be excluded from jupyter notebooks in order to use multiprocessing.Pool
 
-def get_representation(trial:int, N=500, Nm=100):
+def get_representation(trial:int, sampling_method=RandomSampling):
     contained = []
     H = FairPairGraph()
-    H.generate_groups(N, Nm)
-    H.group_assign_scores(nodes=H.majority_nodes, distr=Distributions.normal_distr)
-    H.group_assign_scores(nodes=H.minority_nodes, distr=Distributions.normal_distr, loc=0.3, scale=0.2) # give a disadvantage to the minority
-    for j in range(75):
-        sampler = ProbKnockoutSampling(H, warn=False)
-        sampler.apply(iter=1, k=1, min_prob=0.10)
+    H.generate_groups(400, 200)
+    H.assign_skills(loc=0, scale=0.86142674) # general skill distribution
+    H.assign_bias(nodes=H.minority_nodes, loc=-1.43574282, scale=0.43071336) # add bias to unprivileged group
+    sampler = sampling_method(H, warn=False)
+    for j in range(50):
+        if isinstance(sampler, RandomSampling):
+            method = 'Random Sampling'
+            sampler.apply(iter=1, k=1)
+        elif isinstance(sampler, OversampleMinority):
+            method = 'Oversample 75 %'
+            sampler.apply(iter=1, k=1, p=0.75)
         connected_nodes = max(nx.strongly_connected_components(H), key=len)
-        contained.append((trial, j, len([n for n in connected_nodes if n in H.minority_nodes])/Nm, 'Minority'))
-        contained.append((trial, j, len([n for n in connected_nodes if n in H.majority_nodes])/(N-Nm), 'Majority'))
+        #contained.append((trial, j, len([n for n in connected_nodes if n in H.minority_nodes])/Nm, 'Minority'))
+        contained.append((trial, j, len(connected_nodes)/400, method))
     return contained
 
 
