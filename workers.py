@@ -176,8 +176,8 @@ def get_topk_tau(trial:int, sampling_method:Sampling, topk=[10,50,100,200,400], 
     accuracy = []
     H = FairPairGraph()
     H.generate_groups(N, Nm) # same size groups
-    H.group_assign_scores(nodes=H.nodes, loc=0, scale=0.86142674) # general score distribution
-    H.group_add_scores(nodes=H.minority_nodes, loc=-1.43574282, scale=0.43071336) # add bias to unprivileged group
+    H.assign_skills(loc=0, scale=0.86142674) # general skill distribution
+    H.assign_bias(nodes=H.minority_nodes, loc=-1.43574282, scale=0.43071336) # add bias to unprivileged group
     sampler = sampling_method(H, warn=False, use_exp_BTL=True)
     ranker = RankRecovery(H)
     ranking = None
