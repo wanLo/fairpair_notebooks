@@ -193,16 +193,16 @@ def get_GNNRank_weightedTau(trial:int, samplingMethod:RandomSampling, apply_bias
 
 
 
-def get_GNNRank_correlations(samplingMethod:RandomSampling, apply_bias:bool):
+def get_GNNRank_correlations(trial:int, samplingMethod:RandomSampling, apply_bias:bool):
     # customize `dataset` to properly save the model
     # get optimal settings from the paper: `baseline`, `pretrain_with`, `train_with`, `upset_margin_coeff`
     # use defaults for: `early_stopping`, `epochs`
     # handle output cleverly using: `load_only=True`, `regenerate_data=True`, `be_silent=True`
     args = ArgsNamespace(AllTrain=True, ERO_style='uniform', F=70, Fiedler_layer_num=5, K=20, N=350, SavePred=False, all_methods=['DIGRAC', 'ib'],
-                     alpha=1.0, baseline='syncRank', cuda=True, data_path='/home/jovyan/GNNRank/src/../data/',
+                     alpha=1.0, baseline='syncRank', cuda=True, data_path='/home/georg/GNNRank/src/../data/',
                      dataset=f'fairPair_correlations/{samplingMethod.__name__}_with{"out" if not apply_bias else ""}bias', be_silent=True,
                      debug=False, device=torch.device(type='cuda'), dropout=0.5, early_stopping=200, epochs=1000, eta=0.1, fill_val=0.5, hidden=8, hop=2,
-                     load_only=True, log_root='/home/jovyan/GNNRank/src/../logs/', lr=0.01, no_cuda=False, num_trials=1, optimizer='Adam', p=0.05,
+                     load_only=True, log_root='/home/georg/GNNRank/src/../logs/', lr=0.01, no_cuda=False, num_trials=1, optimizer='Adam', p=0.05,
                      pretrain_epochs=50, pretrain_with='dist', regenerate_data=True, season=1990, seed=31, seeds=[10], sigma=1.0, tau=0.5, test_ratio=1,
                      train_ratio=1, train_with='proximal_baseline', trainable_alpha=False, upset_margin=0.01, upset_margin_coeff=0, upset_ratio_coeff=1.0, weight_decay=0.0005)
     torch.manual_seed(args.seed)
@@ -211,9 +211,9 @@ def get_GNNRank_correlations(samplingMethod:RandomSampling, apply_bias:bool):
     # fix seed=42 for reproducibility of single plots
     H = FairPairGraph()
     H.generate_groups(400, 200) # same size groups
-    H.assign_skills(loc=0, scale=0.86142674, seed=42) # general skill distribution
+    H.assign_skills(loc=0, scale=0.86142674) # general skill distribution
     if apply_bias:
-        H.assign_bias(nodes=H.minority_nodes, loc=-1.43574282, scale=0.43071336, seed=42) # add bias to unprivileged group
+        H.assign_bias(nodes=H.minority_nodes, loc=-1.43574282, scale=0.43071336) # add bias to unprivileged group
     
     sampler = samplingMethod(H, warn=False)
     ranking = None
@@ -246,11 +246,14 @@ def get_GNNRank_correlations(samplingMethod:RandomSampling, apply_bias:bool):
 
             ranking_as_ranks = scores_to_rank(ranking, invert=True)
             for node, data in H.majority.nodes(data=True):
-                ranks.append((j*step+step, data['skill'], data['score'], ranking_as_ranks[node], 'Privileged', samplingMethod.__name__, apply_bias))
+                ranks.append((trial, j*step+step, data['skill'], data['score'], ranking_as_ranks[node], 'Privileged', samplingMethod.__name__, apply_bias))
             for node, data in H.minority.nodes(data=True):
-                ranks.append((j*step+step, data['skill'], data['score'], ranking_as_ranks[node], 'Unprivileged', samplingMethod.__name__, apply_bias))
+                ranks.append((trial, j*step+step, data['skill'], data['score'], ranking_as_ranks[node], 'Unprivileged', samplingMethod.__name__, apply_bias))
         
         if j%10 == 9:
             print(f'{samplingMethod.__name__}, with{"out" if not apply_bias else ""}bias: finished {j*step+step} iterations.')
     
+    ranks_df = pd.DataFrame(ranks, columns=['trial', 'iteration', 'skill score', 'average perceived score', 'rank', 'group', 'sampling method', 'bias_applied'])
+    ranks_df.to_csv(f'./data/GNNRank_intermed/trial{trial}_{samplingMethod.__name__}_with{"" if apply_bias else "out"}Bias.csv', index=False)
+
     return ranks
