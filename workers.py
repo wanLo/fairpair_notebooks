@@ -372,15 +372,15 @@ def get_sep_probs_normal_bias(myu, sigma, myu_bias, sigma_bias):
     return maj_result, stronger_result
 
 
-def get_correlations(samplingMethod:RandomSampling, apply_bias:bool, rank_using=davidScore):
+def get_correlations(trial:int, samplingMethod:RandomSampling, apply_bias:bool, rank_using=davidScore):
 
     # create a new graph for inference
     # fix seed=42 for reproducibility of single plots
     H = FairPairGraph()
     H.generate_groups(400, 200) # same size groups
-    H.assign_skills(loc=0, scale=0.86142674, seed=42) # general skill distribution
+    H.assign_skills(loc=0, scale=0.86142674) # general skill distribution
     if apply_bias:
-        H.assign_bias(nodes=H.minority_nodes, loc=-1.43574282, scale=0.43071336, seed=42) # add bias to unprivileged group
+        H.assign_bias(nodes=H.minority_nodes, loc=-1.43574282, scale=0.43071336) # add bias to unprivileged group
     
     sampler = samplingMethod(H, warn=False)
     ranker = RankRecovery(H)
@@ -409,22 +409,24 @@ def get_correlations(samplingMethod:RandomSampling, apply_bias:bool, rank_using=
                 elif samplingMethod.__name__ == 'RankSampling' and apply_bias: path=f'data/tmp4'
                 elif samplingMethod.__name__ == 'RankSampling' and not apply_bias: path=f'data/tmp5'
                 ranking, other_nodes = ranker.apply(rank_using=rank_using, path=path)
-            elif rank_using.__name__ == 'davidScore':
-                ranker_name = "David's Score"
-                ranking, other_nodes = ranker.apply(rank_using=rank_using)
-            elif rank_using.__name__ == 'rankCentrality':
-                ranker_name = "RankCentrality"
-                ranking, other_nodes = ranker.apply(rank_using=rank_using)
+            #elif rank_using.__name__ == 'davidScore':
+            #    ranker_name = "David's Score"
+            #    ranking, other_nodes = ranker.apply(rank_using=rank_using)
+            #elif rank_using.__name__ == 'rankCentrality':
+            #    ranker_name = "RankCentrality"
+            #    ranking, other_nodes = ranker.apply(rank_using=rank_using)
+            ranker_name = rank_using.__name__
+            ranking, other_nodes = ranker.apply(rank_using=rank_using)
 
             ranking_as_ranks = scores_to_rank(ranking, invert=True)
             for node, data in H.majority.nodes(data=True):
-                ranks.append((j*step+step, data['skill'], data['score'], ranking_as_ranks[node], 'Privileged',
+                ranks.append((trial, j*step+step, data['skill'], data['score'], ranking_as_ranks[node], 'Privileged',
                               samplingMethod.__name__, ranker_name, apply_bias))
             for node, data in H.minority.nodes(data=True):
-                ranks.append((j*step+step, data['skill'], data['score'], ranking_as_ranks[node], 'Unprivileged',
+                ranks.append((trial, j*step+step, data['skill'], data['score'], ranking_as_ranks[node], 'Unprivileged',
                               samplingMethod.__name__, ranker_name, apply_bias))
         
         if j%10 == 9:
-            print(f'{samplingMethod.__name__}, with{"out" if not apply_bias else ""} bias, {ranker_name}: finished {j*step+step} iterations.')
+            print(f'trial {trial}, {samplingMethod.__name__}, with{"out" if not apply_bias else ""} bias, {ranker_name}: finished {j*step+step} iterations.')
     
     return ranks
