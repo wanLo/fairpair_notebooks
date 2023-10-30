@@ -426,7 +426,7 @@ def get_correlations(trial:int, samplingMethod:RandomSampling, apply_bias:bool, 
                 ranks.append((trial, j*step+step, data['skill'], data['score'], ranking_as_ranks[node], 'Unprivileged',
                               samplingMethod.__name__, ranker_name, apply_bias))
         
-        if j%10 == 9:
-            print(f'trial {trial}, {samplingMethod.__name__}, with{"out" if not apply_bias else ""} bias, {ranker_name}: finished {j*step+step} iterations.')
+            if j%10 == 9:
+                print(f'trial {trial}, {samplingMethod.__name__}, with{"out" if not apply_bias else ""} bias, {ranker_name}: finished {j*step+step} iterations.')
     
     return ranks
