@@ -124,7 +124,7 @@ def post_process_epira(trial, sampling_method, ranking_method, bias_applied):
         item_ids = ranking_list[:,0].astype(int)
         group_ids = ranking_list[:,2].astype(int)
 
-        consensus, ranking_group_ids = epiRA(base_ranks, item_ids, group_ids, bnd=0.9, grporder=True, agg_method=None, print_swaps=False)
+        consensus, ranking_group_ids = epiRA(base_ranks, item_ids, group_ids, bnd=0.99, grporder=True, agg_method=None, print_swaps=False)
 
         # re-format output
         ranking = {id: 400-rank for rank, id in enumerate(consensus)} # invert the ranks for evaluation

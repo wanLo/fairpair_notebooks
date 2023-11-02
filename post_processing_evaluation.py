@@ -18,4 +18,4 @@ if __name__ == '__main__':
 
     accuracy = [result for pool in accuracy for result in pool]
     accuracy = pd.DataFrame(accuracy, columns=['trial', 'iteration', 'value', 'bias_applied', 'sampling strategy', 'recovery method', 'metric', 'group'])
-    accuracy.to_csv('./data/post_processing/EPIRA_10trials.csv', index=False)
+    accuracy.to_csv('./data/post_processing/EPIRA99_10trials.csv', index=False)
