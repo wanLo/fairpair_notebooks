@@ -157,7 +157,7 @@ def weighted_tau(graph:FairPairGraph, ranking:dict, subgraph: Union[FairPairGrap
     # sum up weights of discordant pairs
     discordant_sum = 0
     worst_case_sum = 0
-    subgraph_nodes = list(subgraph.nodes) # must faster to do this only once
+    subgraph_nodes = list(subgraph.nodes) # much faster to do this only once
     complementary_nodes = [node for node in graph.nodes if node not in subgraph.nodes]
     for num, i in enumerate(subgraph_nodes):
         # consider within-group pairs till before the diagonal
@@ -172,6 +172,36 @@ def weighted_tau(graph:FairPairGraph, ranking:dict, subgraph: Union[FairPairGrap
     # But this is not compatible with subgraphs and yields a weird result range.
     # normed_weights = np.linalg.norm([weight for _, weight in subgraph.nodes(data=score_attr)])
     # return (discordant_sum / (2 * n_pairs * (normed_weights ** 2))) ** 0.5
+    
+    # We use a worst-case sum (all pairs are discordant) for normalization instead
+    return (discordant_sum / worst_case_sum) ** 0.5
+
+
+def weighted_tau_nodes(base_scores:dict, ranking:dict, subgraph_nodes:list, complementary_nodes:list) -> float:
+    '''
+    A faster version of the weighted Kemeny distance, operating directly on the score/ranking dicts
+
+    Parameters
+    ----------
+    - base_scores: a {node:score} dictionary based on ground-truth scores
+    - ranking: a {node:rank} dictionary based on the current ranking
+    - subgraph_nodes: nodes from a subgraph for which to calculate the Kemeny distance
+    '''
+
+    # get rankings as dicts
+    ranking = scores_to_rank(ranking)
+
+    # sum up weights of discordant pairs
+    discordant_sum = 0
+    worst_case_sum = 0
+    for num, i in enumerate(subgraph_nodes):
+        # consider within-group pairs till before the diagonal
+        # and pairs with complementary nodes only one-way
+        for j in subgraph_nodes[:num] + complementary_nodes:
+            diff = (base_scores[i]-base_scores[j]) ** 2
+            worst_case_sum += diff
+            if (base_scores[i]-base_scores[j])*(ranking[i]-ranking[j]) > 0:
+                discordant_sum += diff
     
     # We use a worst-case sum (all pairs are discordant) for normalization instead
     return (discordant_sum / worst_case_sum) ** 0.5
@@ -344,6 +374,23 @@ def exposure(graph:FairPairGraph, ranking:dict, subgraph: Union[FairPairGraph, N
     exp = np.array([ranking[node] for node in subgraph.nodes])
     exp = 1/np.log2(exp + 2) # use +2 such that the highest rank (0) works out fine
     return np.sum(exp)/len(subgraph)
+
+
+def exposure_nodes(ranking:dict, subgraph_nodes:list) -> float:
+    '''
+    A faster version of calculating exposure (Singh & Joachims, 2018)
+
+    Parameters
+    ----------
+    - ranking: dict of nodes and their ranking results
+    - subgraph_nodes: nodes from a subgraph for which to calculate the exposure
+    '''
+
+    ranking = scores_to_rank(ranking)
+
+    exp = np.array([ranking[node] for node in subgraph_nodes])
+    exp = 1/np.log2(exp + 2) # use +2 such that the highest rank (0) works out fine
+    return np.sum(exp)/len(subgraph_nodes)
 
 
 def topk_exposure(graph:FairPairGraph, ranking:dict, subgraph: Union[FairPairGraph, None] = None,

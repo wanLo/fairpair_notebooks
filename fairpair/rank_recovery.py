@@ -85,7 +85,7 @@ class RankRecovery:
     def apply(self, rank_using=rankCentrality, **kwargs) -> Tuple[dict, list]:
         '''
         Helper for applying a ranking function to a FairPairGraph.
-        Preserves node names and calculates the ranking only if strongly connected.
+        Preserves node names and calculates the ranking only if weakly connected.
 
         Parameters
         ----------
@@ -96,11 +96,11 @@ class RankRecovery:
         Returns
         -------
         - ranking: dict of nodes and their ranking results
-        - other_nodes: list of all nodes NOT included in giant strongly connected component
+        - other_nodes: list of all nodes NOT included in giant weakly connected component
         '''
         other_nodes = []
         ranking = None
-        if nx.is_strongly_connected(self.G): # only apply ranking recovery if strongly connected
+        if nx.is_weakly_connected(self.G): # only apply ranking recovery if weakly connected
             if rank_using == 'fairPageRank':
                 ranking = fairPageRank(self.G, **kwargs)
                 ranking = dict(zip(self.G.nodes, ranking))

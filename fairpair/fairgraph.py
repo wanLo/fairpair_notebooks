@@ -8,8 +8,8 @@ from .distributions import Distributions
 class FairPairGraph(nx.DiGraph):
 
 
-    def __init__(self):
-        nx.DiGraph.__init__(self)
+    def __init__(self, incoming_graph_data=None, **attr):
+        nx.DiGraph.__init__(self, incoming_graph_data, **attr)
 
 
     def generate_groups(self, N:int, Nm: int):
