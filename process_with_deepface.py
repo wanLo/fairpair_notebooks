@@ -96,7 +96,7 @@ if __name__ == "__main__":
     #print(pictures_df.img_path.head(5))
 
     picture_batch_iter = 0
-    picture_batch_step = 100
+    picture_batch_step = 1000
 
     annotated_df = pd.DataFrame()
 
