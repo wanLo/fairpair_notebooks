@@ -81,22 +81,24 @@ def analyze_quicker(
 
 if __name__ == "__main__":
 
-    wiki = scipy.io.loadmat('./data/imdb-wiki/wiki.mat')
-    imdb = scipy.io.loadmat('./data/imdb-wiki/imdb.mat')
+    #wiki = scipy.io.loadmat('./data/imdb-wiki/wiki.mat')
+    #imdb = scipy.io.loadmat('./data/imdb-wiki/imdb.mat')
 
-    full_path_wiki = np.stack(wiki['wiki']['full_path'][0][0][0]).flatten()
-    full_path_imdb = np.stack(imdb['imdb']['full_path'][0][0][0]).flatten()
+    #full_path_wiki = np.stack(wiki['wiki']['full_path'][0][0][0]).flatten()
+    #full_path_imdb = np.stack(imdb['imdb']['full_path'][0][0][0]).flatten()
 
-    wiki_df = pd.DataFrame(full_path_wiki, columns=['img_path'])
-    wiki_df['img_path'] = './data/wiki_crop/' + wiki_df['img_path']
-    imdb_df = pd.DataFrame(full_path_imdb, columns=['img_path'])
-    imdb_df['img_path'] = './data/imdb_crop/' + imdb_df['img_path']
-    pictures_df = pd.concat([wiki_df, imdb_df]).reset_index(drop=True)
+    #wiki_df = pd.DataFrame(full_path_wiki, columns=['img_path'])
+    #wiki_df['img_path'] = './data/wiki_crop/' + wiki_df['img_path']
+    #imdb_df = pd.DataFrame(full_path_imdb, columns=['img_path'])
+    #imdb_df['img_path'] = './data/imdb_crop/' + imdb_df['img_path']
+    #pictures_df = pd.concat([wiki_df, imdb_df]).reset_index(drop=True)
 
     #print(pictures_df.img_path.head(5))
+    pictures_df = pd.read_csv('./data/imdb-wiki/ground_truth_cleaned.csv')
+    pictures_df['img_path'] = './data/pairwise_pictures/' + pictures_df['filename']
 
     picture_batch_iter = 0
-    picture_batch_step = 1000
+    picture_batch_step = 100
 
     annotated_df = pd.DataFrame()
 
@@ -105,8 +107,9 @@ if __name__ == "__main__":
 
         annotated_tmp_df = analyze_quicker(images=list(pictures_df.iloc[picture_batch_iter:picture_batch_iter+picture_batch_step].img_path),
                                            enforce_detection=False)
+                                           #detector_backend='mtcnn')
         
-        annotated_tmp_df.to_csv(f'./data/annotated_results/annotated_pictures_{picture_batch_iter}.csv', index=False)
+        annotated_tmp_df.to_csv(f'./data/annotated_results_SbS_dataset/annotated_pictures_{picture_batch_iter}.csv', index=False)
         annotated_df = pd.concat([annotated_df, annotated_tmp_df]).reset_index(drop=True)
 
         picture_batch_iter += picture_batch_step
