@@ -186,6 +186,7 @@ def weighted_tau_nodes(base_scores:dict, ranking:dict, subgraph_nodes:list, comp
     - base_scores: a {node:score} dictionary based on ground-truth scores
     - ranking: a {node:rank} dictionary based on the current ranking
     - subgraph_nodes: nodes from a subgraph for which to calculate the Kemeny distance
+    - complementary_nodes: the other nodes to also compare to (but not among them)
     '''
 
     # get rankings as dicts
@@ -235,6 +236,61 @@ def weighted_tau_separate(graph:FairPairGraph, ranking:dict, subgraph: Union[Fai
 
     subgraph_nodes = list(subgraph.nodes) # must faster to do this only once
     complementary_nodes = [node for node in graph.nodes if node not in subgraph.nodes]
+
+    # sum up weights of within-group discordant pairs
+    if calc_within:
+        discordant_sum_int = 0
+        worst_case_sum_int = 0
+        for num, i in enumerate(subgraph_nodes):
+            # consider within-group pairs till before the diagonal
+            for j in subgraph_nodes[:num]:
+                diff = (base_scores[i]-base_scores[j]) ** 2
+                worst_case_sum_int += diff
+                if (base_scores[i]-base_scores[j])*(ranking[i]-ranking[j]) > 0:
+                    discordant_sum_int += diff
+        tau_within = (discordant_sum_int / worst_case_sum_int) ** 0.5
+    else: tau_within = None
+
+    # sum up weights of between-group discordant pairs
+    if calc_between:
+        discordant_sum_ext = 0
+        worst_case_sum_ext = 0
+        for i in subgraph_nodes:
+            # consider complementary nodes only one-way
+            for j in complementary_nodes:
+                diff = (base_scores[i]-base_scores[j]) ** 2
+                worst_case_sum_ext += diff
+                if (base_scores[i]-base_scores[j])*(ranking[i]-ranking[j]) > 0:
+                    discordant_sum_ext += diff
+        tau_between = (discordant_sum_ext / worst_case_sum_ext) ** 0.5
+    else: tau_between = None
+    
+    return tau_within, tau_between
+
+
+def weighted_tau_separate_nodes(base_scores:dict, ranking:dict, subgraph_nodes:list, complementary_nodes:list,
+                                calc_within=True, calc_between=True) -> Tuple[float, float]:
+    '''
+    Calculates the within-group and the between-group weighted Kemedy distance for a `ranking` given the
+    "ground-truth" ranking from initial scores of `graph`.
+
+    Parameters
+    ----------
+    - base_scores: a {node:score} dictionary based on ground-truth scores
+    - ranking: a {node:rank} dictionary based on the current ranking
+    - subgraph_nodes: nodes from a subgraph for which to calculate the Kemeny distance
+    - complementary_nodes: the other nodes to also compare to (but not among them)
+    - calc_within: whether to calculate within-group tau
+    - calc_between: whether to calculate between-group tau
+
+    Returns
+    -------
+    - tau_within: within-group weighted Kemedy distance
+    - tau_between: between-group weighted Kemedy distance
+    '''
+
+    # get rankings as dicts
+    ranking = scores_to_rank(ranking)
 
     # sum up weights of within-group discordant pairs
     if calc_within:

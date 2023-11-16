@@ -372,7 +372,7 @@ def get_sep_probs_normal_bias(myu, sigma, myu_bias, sigma_bias):
     return maj_result, stronger_result
 
 
-def get_correlations(trial:int, samplingMethod:RandomSampling, apply_bias:bool, rank_using=davidScore):
+def get_correlations(trial:int, samplingMethod, apply_bias:bool, rank_using=davidScore):
 
     # create a new graph for inference
     # fix seed=42 for reproducibility of single plots
