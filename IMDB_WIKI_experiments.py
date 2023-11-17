@@ -85,7 +85,7 @@ def subsample_and_rank(trial:int, sampling_strategy='randomSampling', rank_using
         if nx.is_weakly_connected(FPG):
             ranking, other_nodes = ranker.apply(rank_using=rank_using)
             
-            ranking_as_ranks = scores_to_rank(ranking, invert=True)
+            ranking_as_ranks = scores_to_rank(ranking, invert=False) # invert=True
             for node, data in FPG.majority.nodes(data=True):
                 ranks.append((trial, j*step+step, data['skill'], ranking_as_ranks[node], 'Privileged',
                                 sampling_strategy, rank_using.__name__))
@@ -103,10 +103,10 @@ def subsample_and_rank(trial:int, sampling_strategy='randomSampling', rank_using
 
 if __name__ == '__main__':
 
-    #tasks = list(product(range(10), ['randomSampling', 'oversampling', 'rankSampling'],
-    #                     [randomRankRecovery, davidScore, rankCentrality])) # trial, sampling_strategy, rank_using
-    tasks = list(product(range(8), ['randomSampling', 'oversampling', 'rankSampling'],
-                         [rankCentrality])) # trial, sampling_strategy, rank_using
+    tasks = list(product(range(10), ['randomSampling', 'oversampling', 'rankSampling'],
+                         [randomRankRecovery, davidScore, rankCentrality])) # trial, sampling_strategy, rank_using
+    #tasks = list(product(range(8), ['randomSampling', 'oversampling', 'rankSampling'],
+    #                     [rankCentrality])) # trial, sampling_strategy, rank_using
 
     #try: multiprocessing.set_start_method('spawn') # if it wasn't alrady set, make sure we use the `spawn` method.
     #except RuntimeError: pass
@@ -117,4 +117,4 @@ if __name__ == '__main__':
     ranks = [result for pool in ranks for result in pool]
     ranks = pd.DataFrame(ranks, columns=['trial', 'iteration', 'skill score', 'rank', 'group', 'sampling method', 'ranker'])
 
-    ranks.to_csv('./data/imdb-wiki_results/test_rankCentrality_correlations_1trial.csv', index=False)
+    ranks.to_csv('./data/imdb-wiki_results/basicMethods_correlations_10trials.csv', index=False)

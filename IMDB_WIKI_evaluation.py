@@ -15,6 +15,7 @@ def ranking_evaluation(data: pd.DataFrame, trial:int, sampling_method:str, ranki
     first_iteration = filtered_df.iteration.unique()[0]
 
     base_scores = filtered_df[(filtered_df.iteration == first_iteration)]['skill score'].to_dict()
+    all_nodes = list(filtered_df[filtered_df.iteration == first_iteration].index)
     majority_nodes = list(filtered_df[(filtered_df.iteration == first_iteration) & (filtered_df.group == 'Privileged')].index)
     minority_nodes = list(filtered_df[(filtered_df.iteration == first_iteration) & (filtered_df.group == 'Unprivileged')].index)
 
@@ -26,6 +27,9 @@ def ranking_evaluation(data: pd.DataFrame, trial:int, sampling_method:str, ranki
         ranking = _tmp_df['rank'].to_dict()
 
         if len(filtered_df):
+            tau = weighted_tau_nodes(base_scores, ranking, subgraph_nodes=all_nodes, complementary_nodes=[])
+            results.append((trial, iteration, tau, sampling_method, ranking_method, 'tau', 'Overall'))
+
             tau = weighted_tau_nodes(base_scores, ranking, subgraph_nodes=majority_nodes, complementary_nodes=minority_nodes)
             results.append((trial, iteration, tau, sampling_method, ranking_method, 'tau', 'Privileged'))
 
@@ -65,4 +69,4 @@ if __name__ == '__main__':
 
     accuracy = [result for pool in accuracy for result in pool]
     accuracy = pd.DataFrame(accuracy, columns=['trial', 'iteration', 'value', 'sampling strategy', 'recovery method', 'metric', 'group'])
-    accuracy.to_csv('./data/imdb-wiki_results/test_rankCentrality_evaluated.csv', index=False)
+    accuracy.to_csv('./data/imdb-wiki_results/IMDB-WIKI_basicMethods_evaluated.csv', index=False)
