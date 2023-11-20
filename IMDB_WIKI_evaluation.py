@@ -5,9 +5,13 @@ import multiprocessing
 
 from fairpair import *
 
-def ranking_evaluation(data: pd.DataFrame, trial:int, sampling_method:str, ranking_method:str):
+def ranking_evaluation(file:str, trial:int, sampling_method:str, ranking_method:str):
+
+    data = pd.read_csv(file)
 
     filtered_df = data[data['ranker'] == ranking_method].copy()
+    del data
+    
     filtered_df = filtered_df[filtered_df['trial'] == trial] 
     filtered_df = filtered_df[filtered_df['sampling method'] == sampling_method] 
     filtered_df = filtered_df.reset_index(drop=True)
@@ -58,11 +62,10 @@ def ranking_evaluation(data: pd.DataFrame, trial:int, sampling_method:str, ranki
 
 if __name__ == '__main__':
 
-    data = pd.read_csv('./data/imdb-wiki_results/test_rankCentrality_correlations_8trials.csv')
+    file = './data/imdb-wiki_results/basicMethods_correlations_10trials.csv'
 
-    tasks = list(product([data], range(8), ['randomSampling', 'oversampling', 'rankSampling'], ['rankCentrality'])) # data, trial, sampling_method, ranking_method
-
-    #tasks = list(product(range(10), ['RandomSampling'], ['davidScore'], [True]))
+    tasks = list(product([file], range(10), ['randomSampling', 'oversampling', 'rankSampling'],
+                         ['rankCentrality', 'randomRankRecovery', 'davidScore'])) # data, trial, sampling_method, ranking_method
 
     pool = multiprocessing.Pool()
     accuracy = pool.starmap(ranking_evaluation, tasks)
