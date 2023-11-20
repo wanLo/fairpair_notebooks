@@ -38,6 +38,9 @@ def subsample_and_rank(trial:int, sampling_strategy='randomSampling', rank_using
     G = load_dataset(ground_truth_file, pairwise_file)
     df = pd.read_csv(ground_truth_file, index_col=0)
 
+    G = nx.convert_node_labels_to_integers(G)  # nodes need to be named 0…n in order for fairPageRank to work
+    df = df.reset_index(drop=True)
+
     # init an empty graph to subsample into
     FPG = FairPairGraph()
     FPG.add_nodes_from(G.nodes(data=True))
@@ -87,21 +90,22 @@ def subsample_and_rank(trial:int, sampling_strategy='randomSampling', rank_using
             if rank_using == 'fairPageRank':
                 current_proc = multiprocessing.current_process()
                 path = './data/fairPageRank/tmp_' + str(current_proc._identity[0])
-                print(path)
                 ranking, other_nodes = ranker.apply(rank_using=rank_using, path=path)
+                ranker_name = 'fairPageRank'
             else:
                 ranking, other_nodes = ranker.apply(rank_using=rank_using)
-            
+                ranker_name = rank_using.__name__
+             
             ranking_as_ranks = scores_to_rank(ranking, invert=False) # invert=True
             for node, data in FPG.majority.nodes(data=True):
                 ranks.append((trial, j*step+step, data['skill'], ranking_as_ranks[node], 'Privileged',
-                                sampling_strategy, rank_using.__name__))
+                                sampling_strategy, ranker_name))
             for node, data in FPG.minority.nodes(data=True):
                 ranks.append((trial, j*step+step, data['skill'], ranking_as_ranks[node], 'Unprivileged',
-                                sampling_strategy, rank_using.__name__))
+                                sampling_strategy, ranker_name))
         
             if j%10 == 9:
-                print(f'trial {trial}, {sampling_strategy}, {rank_using.__name__}: finished {j*step+step} iterations.')
+                print(f'trial {trial}, {sampling_strategy}, {ranker_name}: finished {j*step+step} iterations.')
     
     return ranks
 
