@@ -80,10 +80,17 @@ def subsample_and_rank(trial:int, sampling_strategy='randomSampling', rank_using
             # randomly select edges among the given nodes to add to the graph
             selected_edges = rng.choice(H.edges, size=len(H)//2, axis=0)
             FPG.add_edges_from(list(map(tuple, selected_edges)))
+            nx.set_edge_attributes(FPG, 1, 'weight')  # an edge either exists or it doesn't
 
         # recover a ranking if the graph is at least weakly connected
         if nx.is_weakly_connected(FPG):
-            ranking, other_nodes = ranker.apply(rank_using=rank_using)
+            if rank_using == 'fairPageRank':
+                current_proc = multiprocessing.current_process()
+                path = './data/fairPageRank/tmp_' + str(current_proc._identity[0])
+                print(path)
+                ranking, other_nodes = ranker.apply(rank_using=rank_using, path=path)
+            else:
+                ranking, other_nodes = ranker.apply(rank_using=rank_using)
             
             ranking_as_ranks = scores_to_rank(ranking, invert=False) # invert=True
             for node, data in FPG.majority.nodes(data=True):
@@ -103,8 +110,8 @@ def subsample_and_rank(trial:int, sampling_strategy='randomSampling', rank_using
 
 if __name__ == '__main__':
 
-    tasks = list(product(range(10), ['randomSampling', 'oversampling', 'rankSampling'],
-                         [randomRankRecovery, davidScore, rankCentrality])) # trial, sampling_strategy, rank_using
+    tasks = list(product(range(10), ['randomSampling', 'oversampling', 'rankSampling'], ['fairPageRank']))
+                         #[randomRankRecovery, davidScore, rankCentrality])) # trial, sampling_strategy, rank_using
     #tasks = list(product(range(8), ['randomSampling', 'oversampling', 'rankSampling'],
     #                     [rankCentrality])) # trial, sampling_strategy, rank_using
 
@@ -114,7 +121,12 @@ if __name__ == '__main__':
     pool = multiprocessing.Pool() # limit the num of processes in order to not overflow the GPU memory
     ranks = pool.starmap(subsample_and_rank, tasks)
 
+    #ranks = []
+    #for i in range(10):
+    #    for sampling_method in ['randomSampling', 'oversampling', 'rankSampling']:
+    #        ranks.append(subsample_and_rank(trial=i, sampling_strategy=sampling_method, rank_using='fairPageRank'))
+
     ranks = [result for pool in ranks for result in pool]
     ranks = pd.DataFrame(ranks, columns=['trial', 'iteration', 'skill score', 'rank', 'group', 'sampling method', 'ranker'])
 
-    ranks.to_csv('./data/imdb-wiki_results/basicMethods_correlations_10trials.csv', index=False)
+    ranks.to_csv('./data/imdb-wiki_results/fairPageRank_correlations_10trials.csv', index=False)
