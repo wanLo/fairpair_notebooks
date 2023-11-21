@@ -5,12 +5,25 @@ import multiprocessing
 
 from fairpair import *
 
-def ranking_evaluation(file:str, trial:int, sampling_method:str, ranking_method:str):
+def ranking_evaluation(trial:int, sampling_method:str, ranking_method:str):
+
+    if ranking_method == 'randomRankRecovery':
+        file = './data/imdb-wiki_results/randomRankRecovery_correlations_10trials.csv'
+    elif ranking_method == 'davidScore':
+        file = './data/imdb-wiki_results/davidScore_correlations_10trials.csv'
+    elif ranking_method == 'rankCentrality':
+        file = './data/imdb-wiki_results/rankCentrality_correlations_10trials.csv'
+    elif ranking_method == 'fairPageRank':
+        file = './data/imdb-wiki_results/fairPageRank_correlations_10trials.csv'
+    elif ranking_method == 'GNNRank':
+        file = './data/imdb-wiki_results/GNNRank_correlations_10trials.csv'
+    else:
+        raise ValueError('Unsupported Ranking Method')
 
     data = pd.read_csv(file)
 
-    filtered_df = data[data['ranker'] == ranking_method].copy()
-    del data
+    filtered_df = data[data['ranker'] == ranking_method]#.copy()
+    #del data
     
     filtered_df = filtered_df[filtered_df['trial'] == trial] 
     filtered_df = filtered_df[filtered_df['sampling method'] == sampling_method] 
@@ -62,10 +75,10 @@ def ranking_evaluation(file:str, trial:int, sampling_method:str, ranking_method:
 
 if __name__ == '__main__':
 
-    file = './data/imdb-wiki_results/basicMethods_correlations_10trials.csv'
+    #file = './data/imdb-wiki_results/basicMethods_correlations_10trials.csv'
 
-    tasks = list(product([file], range(10), ['randomSampling', 'oversampling', 'rankSampling'],
-                         ['rankCentrality', 'randomRankRecovery', 'davidScore'])) # data, trial, sampling_method, ranking_method
+    tasks = list(product(range(10), ['randomSampling', 'oversampling', 'rankSampling'],
+                         ['rankCentrality', 'randomRankRecovery', 'davidScore', 'fairPageRank'])) # trial, sampling_method, ranking_method
 
     pool = multiprocessing.Pool()
     accuracy = pool.starmap(ranking_evaluation, tasks)
