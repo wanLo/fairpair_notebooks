@@ -78,11 +78,12 @@ if __name__ == '__main__':
     #file = './data/imdb-wiki_results/basicMethods_correlations_10trials.csv'
 
     tasks = list(product(range(10), ['randomSampling', 'oversampling', 'rankSampling'],
-                         ['rankCentrality', 'randomRankRecovery', 'davidScore', 'fairPageRank'])) # trial, sampling_method, ranking_method
+                         ['GNNRank'])) # trial, sampling_method, ranking_method
+    # 'rankCentrality', 'randomRankRecovery', 'davidScore', 'fairPageRank'
 
     pool = multiprocessing.Pool()
     accuracy = pool.starmap(ranking_evaluation, tasks)
 
     accuracy = [result for pool in accuracy for result in pool]
     accuracy = pd.DataFrame(accuracy, columns=['trial', 'iteration', 'value', 'sampling strategy', 'recovery method', 'metric', 'group'])
-    accuracy.to_csv('./data/imdb-wiki_results/IMDB-WIKI_basicMethods_evaluated.csv', index=False)
+    accuracy.to_csv('./data/imdb-wiki_results/IMDB-WIKI_GNNRank_evaluated.csv', index=False)
