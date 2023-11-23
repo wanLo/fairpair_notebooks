@@ -16,7 +16,7 @@ def ranking_evaluation(trial:int, sampling_method:str, ranking_method:str):
     elif ranking_method == 'fairPageRank':
         file = './data/imdb-wiki_results/fairPageRank_correlations_10trials.csv'
     elif ranking_method == 'GNNRank':
-        file = './data/imdb-wiki_results/GNNRank_correlations_10trials.csv'
+        file = './data/imdb-wiki_results/GNNRank_correlations_reTrained_10trials.csv'
     else:
         raise ValueError('Unsupported Ranking Method')
 
@@ -86,4 +86,4 @@ if __name__ == '__main__':
 
     accuracy = [result for pool in accuracy for result in pool]
     accuracy = pd.DataFrame(accuracy, columns=['trial', 'iteration', 'value', 'sampling strategy', 'recovery method', 'metric', 'group'])
-    accuracy.to_csv('./data/imdb-wiki_results/IMDB-WIKI_GNNRank_evaluated.csv', index=False)
+    accuracy.to_csv('./data/imdb-wiki_results/IMDB-WIKI_GNNRank_reTrained_evaluated.csv', index=False)
