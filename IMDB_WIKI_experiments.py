@@ -35,7 +35,7 @@ def load_dataset(ground_truth_file:str, pairwise_file:str) -> nx.DiGraph:
 
 
 def subsample_and_rank(trial:int, sampling_strategy='randomSampling', rank_using=rankCentrality,
-        ground_truth_file='./data/imdb-wiki/ground_truth_selected.csv',
+        ground_truth_file='./data/imdb-wiki/ground_truth_selected_stratified.csv',
         pairwise_file='./data/imdb-wiki/comparisons_cleaned.csv') -> list:
 
     rng = np.random.default_rng()
@@ -114,6 +114,7 @@ def subsample_and_rank(trial:int, sampling_strategy='randomSampling', rank_using
                 print(f'trial {trial}, {sampling_strategy}, {ranker_name}: finished {j*step+step} iterations.')
     
     return ranks
+
 
 def subsample_and_rank_GNNRank(trial:int, sampling_strategy:str,
                                ground_truth_file='./data/imdb-wiki/ground_truth_selected.csv',
@@ -215,25 +216,90 @@ def subsample_and_rank_GNNRank(trial:int, sampling_strategy:str,
     return ranks
 
 
+def rank_full_dataset(rank_using=rankCentrality,
+        ground_truth_file='./data/imdb-wiki/ground_truth_selected_stratified.csv',
+        pairwise_file='./data/imdb-wiki/comparisons_cleaned.csv') -> list:
+    
+    G = load_dataset(ground_truth_file, pairwise_file)
+    G = nx.convert_node_labels_to_integers(G)  # nodes need to be named 0…n in order for fairPageRank to work
+    G = FairPairGraph(G)
+
+    ranker = RankRecovery(G)
+    ranks = []
+
+    if rank_using == 'fairPageRank':
+        current_proc = multiprocessing.current_process()
+        path = './data/fairPageRank/tmp_' + str(current_proc._identity[0])
+        ranking, other_nodes = ranker.apply(rank_using=rank_using, path=path)
+        ranker_name = 'fairPageRank'
+    else:
+        ranking, other_nodes = ranker.apply(rank_using=rank_using)
+        ranker_name = rank_using.__name__
+    
+    ranking_as_ranks = scores_to_rank(ranking, invert=False) # invert=True
+    for node, data in G.majority.nodes(data=True):
+        ranks.append((0, 0, data['skill'], ranking_as_ranks[node], 'Privileged', 'full dataset', ranker_name))
+    for node, data in G.minority.nodes(data=True):
+        ranks.append((0, 0, data['skill'], ranking_as_ranks[node], 'Unprivileged', 'full dataset', ranker_name))
+    
+    return ranks
+
+
+def rank_full_dataset_GNNRank(
+        ground_truth_file='./data/imdb-wiki/ground_truth_selected_stratified.csv',
+        pairwise_file='./data/imdb-wiki/comparisons_cleaned.csv') -> list:
+    
+    # customize `dataset` to properly save the model
+    # get optimal settings from the paper: `baseline`, `pretrain_with`, `train_with`, `upset_margin_coeff`
+    # use defaults for: `early_stopping`, `epochs`
+    # handle output cleverly using: `load_only=True`, `regenerate_data=True`, `be_silent=True`
+    args = ArgsNamespace(AllTrain=True, ERO_style='uniform', F=70, Fiedler_layer_num=5, K=20, N=350, SavePred=False, all_methods=['DIGRAC', 'ib'],
+                     alpha=1.0, baseline='syncRank', cuda=True, data_path='/home/georg/fairpair/GNNRank/src/../data/',
+                     dataset=f'IMDB-WIKI_correlations/full_dataset', be_silent=True,
+                     debug=False, device=torch.device(type='cuda'), dropout=0.5, early_stopping=200, epochs=1000, eta=0.1, fill_val=0.5, hidden=8, hop=2,
+                     load_only=True, log_root='/home/georg/fairpair/GNNRank/src/../logs/', lr=0.01, no_cuda=False, num_trials=1, optimizer='Adam', p=0.05,
+                     pretrain_epochs=50, pretrain_with='dist', regenerate_data=True, season=1990, seed=31, seeds=[10], sigma=1.0, tau=0.5, test_ratio=1,
+                     train_ratio=1, train_with='proximal_baseline', trainable_alpha=False, upset_margin=0.01, upset_margin_coeff=0, upset_ratio_coeff=1.0, weight_decay=0.0005)
+    
+    G = load_dataset(ground_truth_file, pairwise_file)
+    G = nx.convert_node_labels_to_integers(G)  # nodes need to be named 0…n in order for fairPageRank to work
+    G = FairPairGraph(G)
+
+    ranks = []
+
+    adj = nx.linalg.graphmatrix.adjacency_matrix(G, weight='weight') # returns a sparse matrix
+    trainer = Trainer(args, random_seed=10, save_name_base='test', adj=adj) # initialize with the given adjacency matrix
+    save_path_best, save_path_latest = trainer.train(model_name='ib')
+
+    score, pred_label = trainer.predict_nn(model_name='ib', model_path=save_path_best, A=None, GNN_variant='proximal_baseline')
+    ranking = {key: 1-score[0] for key, score in enumerate(score.cpu().detach().numpy())}
+    
+    ranking_as_ranks = scores_to_rank(ranking, invert=False) # invert=True
+    for node, data in G.majority.nodes(data=True):
+        ranks.append((0, 0, data['skill'], ranking_as_ranks[node], 'Privileged', 'full dataset', 'GNNRank'))
+    for node, data in G.minority.nodes(data=True):
+        ranks.append((0, 0, data['skill'], ranking_as_ranks[node], 'Unprivileged', 'full dataset', 'GNNRank'))
+    
+    return ranks
 
 
 
 if __name__ == '__main__':
 
-    #tasks = list(product(range(10), ['randomSampling', 'oversampling', 'rankSampling'], ['fairPageRank']))
-                         #[randomRankRecovery, davidScore, rankCentrality])) # trial, sampling_strategy, rank_using
+    tasks = list(product(range(10), ['randomSampling', 'oversampling', 'rankSampling'],
+                        [randomRankRecovery, davidScore, rankCentrality, 'fairPageRank'])) # trial, sampling_strategy, rank_using
     #tasks = list(product(range(8), ['randomSampling', 'oversampling', 'rankSampling'],
     #                     [rankCentrality])) # trial, sampling_strategy, rank_using
 
-    tasks = list(product(range(10), ['randomSampling', 'oversampling', 'rankSampling']))
+    #tasks = list(product(range(10), ['randomSampling', 'oversampling', 'rankSampling']))
 
-    try: multiprocessing.set_start_method('spawn') # if it wasn't alrady set, make sure we use the `spawn` method.
-    except RuntimeError: pass
+    #try: multiprocessing.set_start_method('spawn') # if it wasn't alrady set, make sure we use the `spawn` method.
+    #except RuntimeError: pass
 
-    pool = multiprocessing.Pool(1) # limit the num of processes in order to not overflow the GPU memory
-    ranks = pool.starmap(subsample_and_rank_GNNRank, tasks)
+    pool = multiprocessing.Pool(24) # limit the num of processes in order to not overflow the GPU memory
+    ranks = pool.starmap(subsample_and_rank, tasks)
 
     ranks = [result for pool in ranks for result in pool]
     ranks = pd.DataFrame(ranks, columns=['trial', 'iteration', 'skill score', 'rank', 'group', 'sampling method', 'ranker'])
 
-    ranks.to_csv('./data/imdb-wiki_results/GNNRank_correlations_reTrained_syncRank_10trials.csv', index=False)
+    ranks.to_csv('./data/imdb-wiki_results/basicMethods_correlations_stratified_10trials.csv', index=False)
