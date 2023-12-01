@@ -362,12 +362,12 @@ def get_normal_loss_bias_half(x, prob_maj, prob_stronger, _myu):
     sigma = x[0]
     myu_bias = x[1]
     sigma_bias = x[0]/2
-    stronger_result = _sep_stronger_prob_normal(myu, sigma, myu + myu_bias, (sigma**2 + sigma_bias**2)**0.5, ratio=0.5)
+    stronger_result = _sep_stronger_prob_normal(myu, sigma, myu + myu_bias, (sigma**2 + sigma_bias**2)**0.5, ratio=0.43981708312918505) # 0.5
     maj_result = _sep_majority_prob_normal(myu, sigma, myu + myu_bias, (sigma**2 + sigma_bias**2)**0.5)
     return np.linalg.norm(np.array([prob_maj, prob_stronger] - np.array([maj_result, stronger_result])))
 
 def get_sep_probs_normal_bias(myu, sigma, myu_bias, sigma_bias):
-    stronger_result = _sep_stronger_prob_normal(myu, sigma, myu + myu_bias, (sigma**2 + sigma_bias**2)**0.5, ratio=0.5)
+    stronger_result = _sep_stronger_prob_normal(myu, sigma, myu + myu_bias, (sigma**2 + sigma_bias**2)**0.5, ratio=0.43981708312918505) # 0.5
     maj_result = _sep_majority_prob_normal(myu, sigma, myu + myu_bias, (sigma**2 + sigma_bias**2)**0.5)
     return maj_result, stronger_result
 
