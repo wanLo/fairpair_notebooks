@@ -7,18 +7,20 @@ from fairpair import *
 
 def ranking_evaluation(trial:int, sampling_method:str, ranking_method:str):
 
-    if ranking_method == 'randomRankRecovery':
-        file = './data/imdb-wiki_results/randomRankRecovery_correlations_stratified_10trials.csv'
-    elif ranking_method == 'davidScore':
-        file = './data/imdb-wiki_results/davidScore_correlations_stratified_10trials.csv'
-    elif ranking_method == 'rankCentrality':
-        file = './data/imdb-wiki_results/rankCentrality_correlations_stratified_10trials.csv'
-    elif ranking_method == 'fairPageRank':
-        file = './data/imdb-wiki_results/fairPageRank_correlations_stratified_10trials.csv'
-    elif ranking_method == 'GNNRank':
-        file = './data/imdb-wiki_results/GNNRank_correlations_reTrained_syncRank_10trials.csv'
-    else:
-        raise ValueError('Unsupported Ranking Method')
+    #if ranking_method == 'randomRankRecovery':
+    #    file = './data/imdb-wiki_results/randomRankRecovery_correlations_stratified_10trials.csv'
+    #elif ranking_method == 'davidScore':
+    #    file = './data/imdb-wiki_results/davidScore_correlations_stratified_10trials.csv'
+    #elif ranking_method == 'rankCentrality':
+    #    file = './data/imdb-wiki_results/rankCentrality_correlations_stratified_10trials.csv'
+    #elif ranking_method == 'fairPageRank':
+    #    file = './data/imdb-wiki_results/fairPageRank_correlations_stratified_10trials.csv'
+    #elif ranking_method == 'GNNRank':
+    #    file = './data/imdb-wiki_results/GNNRank_correlations_reTrained_syncRank_10trials.csv'
+    #else:
+    #    raise ValueError('Unsupported Ranking Method')
+
+    file = './data/imdb-wiki_results/GNNRank_correlations_full_dataset.csv'
 
     data = pd.read_csv(file)
 
@@ -77,8 +79,11 @@ if __name__ == '__main__':
 
     #file = './data/imdb-wiki_results/basicMethods_correlations_10trials.csv'
 
-    tasks = list(product(range(10), ['randomSampling', 'oversampling', 'rankSampling'],
-                         ['rankCentrality', 'randomRankRecovery', 'davidScore', 'fairPageRank'])) # trial, sampling_method, ranking_method
+    #tasks = list(product(range(10), ['randomSampling', 'oversampling', 'rankSampling'],
+    #                     ['rankCentrality', 'randomRankRecovery', 'davidScore', 'fairPageRank'])) # trial, sampling_method, ranking_method
+    #tasks = list(product([0], ['full dataset'],
+    #                     ['rankCentrality', 'randomRankRecovery', 'davidScore', 'fairPageRank'])) # only ranking_method
+    tasks = list(product([0], ['full dataset'], ['GNNRank'])) # only ranking_method
     # 'GNNRank'
 
     pool = multiprocessing.Pool()
@@ -86,4 +91,4 @@ if __name__ == '__main__':
 
     accuracy = [result for pool in accuracy for result in pool]
     accuracy = pd.DataFrame(accuracy, columns=['trial', 'iteration', 'value', 'sampling strategy', 'recovery method', 'metric', 'group'])
-    accuracy.to_csv('./data/imdb-wiki_results/IMDB-WIKI_basicMethods_stratified_evaluated.csv', index=False)
+    accuracy.to_csv('./data/imdb-wiki_results/IMDB-WIKI_GNNRank_fullDataset_evaluated.csv', index=False)
