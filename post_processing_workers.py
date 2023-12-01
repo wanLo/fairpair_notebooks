@@ -35,7 +35,7 @@ def post_process(trial, sampling_method, ranking_method, bias_applied):
     nx.set_node_attributes(G, minority, 'minority')
 
     # initialize the FairSearchCore library
-    fair = fsc.Fair(k=400, p=0.5, alpha=0.1)
+    fair = fsc.Fair(k=400, p=0.6, alpha=0.1)
 
     accuracy = []
 
