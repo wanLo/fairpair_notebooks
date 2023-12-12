@@ -298,7 +298,7 @@ def post_process_IMDB_WIKI_EPIRA(trial, sampling_method, ranking_method):
         consensus, ranking_group_ids = epiRA(base_ranks, item_ids, group_ids, bnd=0.99, grporder=True, agg_method=None, print_swaps=False)
 
         # re-format output
-        ranking = {id: len(consensus)-rank for rank, id in enumerate(consensus)} # invert the ranks for evaluation
+        ranking = {id: rank for rank, id in enumerate(consensus)} # do not invert the ranks for evaluation
 
         tau = weighted_tau_nodes(base_scores, ranking, subgraph_nodes=all_nodes, complementary_nodes=[])
         results.append((trial, iteration, tau, sampling_method, ranking_method, 'tau', 'Overall'))
@@ -342,5 +342,5 @@ if __name__ == '__main__':
     accuracy = pool.starmap(post_process_IMDB_WIKI_EPIRA, tasks)
 
     accuracy = [result for pool in accuracy for result in pool]
-    accuracy = pd.DataFrame(accuracy, columns=['trial', 'iteration', 'value', 'bias_applied', 'sampling strategy', 'recovery method', 'metric', 'group'])
-    accuracy.to_csv('./data/post_processing/IMDB-WIKI_EPIRA99_10trials.csv', index=False)
+    accuracy = pd.DataFrame(accuracy, columns=['trial', 'iteration', 'value', 'sampling strategy', 'recovery method', 'metric', 'group'])
+    accuracy.to_csv('./data/post_processing/IMDB-WIKI_EPIRA99_10trials_v2.csv', index=False)
