@@ -56,16 +56,16 @@ def get_method_accuracy(trial:int, samplingMethod=RandomSampling, ranking_method
     H.generate_groups(400, 200) # same size groups
     H.assign_skills(loc=0, scale=0.86142674) # general skill distribution
     if apply_bias:
-        H.assign_bias(nodes=H.minority_nodes, loc=-1.43574282, scale=0.43071336) # add bias to unprivileged group
+        H.assign_bias(nodes=H.unpriv_nodes, loc=-1.43574282, scale=0.43071336) # add bias to unprivileged group
     
     sampler = samplingMethod(H, warn=False)
     ranker = RankRecovery(H)
 
     ranking = None
     step = 10
-    for j in range(int(3000/step)):
+    for j in range(int(1000/step)): # 3000
         
-        if samplingMethod.__name__ == 'OversampleMinority':
+        if samplingMethod.__name__ == 'Oversampling':
             sampler.apply(iter=step, k=1, p=0.75)
         elif samplingMethod.__name__ == 'RankSampling':
             sampler.apply(iter=step, k=1, ranking=ranking)
@@ -73,28 +73,28 @@ def get_method_accuracy(trial:int, samplingMethod=RandomSampling, ranking_method
             sampler.apply(iter=step, k=1)
 
         ranker_name = None
-        if (nx.is_strongly_connected(H)):
+        if (nx.is_weakly_connected(H)):
             if ranking_method == 'fairPageRank':
                 ranker_name = ranking_method
-                ranking, other_nodes = ranker.apply(rank_using=ranking_method, path=f'data/tmp{trial}')
+                ranking, other_nodes = ranker.apply(rank_using=ranking_method, path=f'../fairpair/data/fairPageRank/tmp_{trial + 1}')
             else:
                 ranker_name = ranking_method.__name__
                 ranking, other_nodes = ranker.apply(rank_using=ranking_method)
 
             tau = weighted_tau(H, ranking)
             accuracy.append((trial, j*step+step, tau, apply_bias, samplingMethod.__name__, ranker_name, 'tau', 'Overall'))
-            tau = weighted_tau(H, ranking, H.majority)
+            tau = weighted_tau(H, ranking, H.priv)
             accuracy.append((trial, j*step+step, tau, apply_bias, samplingMethod.__name__, ranker_name, 'tau', 'Privileged'))
-            tau = weighted_tau(H, ranking, H.minority)
+            tau = weighted_tau(H, ranking, H.unpriv)
             accuracy.append((trial, j*step+step, tau, apply_bias, samplingMethod.__name__, ranker_name, 'tau', 'Unprivileged'))
-            tau = weighted_tau_separate(H, ranking, H.majority)
+            tau = weighted_tau_separate(H, ranking, H.priv)
             accuracy.append((trial, j*step+step, tau[0], apply_bias, samplingMethod.__name__, ranker_name, 'tau', 'Privileged within-group'))
             accuracy.append((trial, j*step+step, tau[1], apply_bias, samplingMethod.__name__, ranker_name, 'tau', 'Between groups'))
-            tau = weighted_tau_separate(H, ranking, H.minority, calc_between=False)
+            tau = weighted_tau_separate(H, ranking, H.unpriv, calc_between=False)
             accuracy.append((trial, j*step+step, tau[0], apply_bias, samplingMethod.__name__, ranker_name, 'tau', 'Unprivileged within-group'))
-            exp = exposure(H, ranking, H.majority)
+            exp = exposure(H, ranking, H.priv)
             accuracy.append((trial, j*step+step, exp, apply_bias, samplingMethod.__name__, ranker_name, 'exposure', 'Privileged'))
-            exp = exposure(H, ranking, H.minority)
+            exp = exposure(H, ranking, H.unpriv)
             accuracy.append((trial, j*step+step, exp, apply_bias, samplingMethod.__name__, ranker_name, 'exposure', 'Unprivileged'))
         
         if j%10 == 9:
