@@ -35,8 +35,8 @@ def load_dataset(ground_truth_file:str, pairwise_file:str) -> nx.DiGraph:
 
 
 def subsample_and_rank(trial:int, sampling_strategy='randomSampling', rank_using=rankCentrality,
-        ground_truth_file='./data/imdb-wiki/ground_truth_selected_stratified.csv',
-        pairwise_file='./data/imdb-wiki/comparisons_cleaned.csv') -> list:
+        ground_truth_file='../fairpair/data/imdb-wiki/ground_truth_selected_stratified.csv',
+        pairwise_file='../fairpair/data/imdb-wiki/comparisons_cleaned.csv') -> list:
 
     rng = np.random.default_rng()
     
@@ -95,7 +95,7 @@ def subsample_and_rank(trial:int, sampling_strategy='randomSampling', rank_using
         if nx.is_weakly_connected(FPG):
             if rank_using == 'fairPageRank':
                 current_proc = multiprocessing.current_process()
-                path = './data/fairPageRank/tmp_' + str(current_proc._identity[0])
+                path = '../fairpair/data/fairPageRank/tmp_' + str(current_proc._identity[0])
                 ranking, other_nodes = ranker.apply(rank_using=rank_using, path=path)
                 ranker_name = 'fairPageRank'
             else:
@@ -103,10 +103,10 @@ def subsample_and_rank(trial:int, sampling_strategy='randomSampling', rank_using
                 ranker_name = rank_using.__name__
              
             ranking_as_ranks = scores_to_rank(ranking, invert=False) # invert=True
-            for node, data in FPG.majority.nodes(data=True):
+            for node, data in FPG.priv.nodes(data=True):
                 ranks.append((trial, j*step+step, data['skill'], ranking_as_ranks[node], 'Privileged',
                                 sampling_strategy, ranker_name))
-            for node, data in FPG.minority.nodes(data=True):
+            for node, data in FPG.unpriv.nodes(data=True):
                 ranks.append((trial, j*step+step, data['skill'], ranking_as_ranks[node], 'Unprivileged',
                                 sampling_strategy, ranker_name))
         
@@ -217,8 +217,8 @@ def subsample_and_rank_GNNRank(trial:int, sampling_strategy:str,
 
 
 def rank_full_dataset(rank_using=rankCentrality,
-        ground_truth_file='./data/imdb-wiki/ground_truth_selected.csv',
-        pairwise_file='./data/imdb-wiki/comparisons_cleaned.csv') -> list:
+        ground_truth_file='../fairpair/data/imdb-wiki/ground_truth_selected.csv',
+        pairwise_file='../fairpair/data/imdb-wiki/comparisons_cleaned.csv') -> list:
     
     G = load_dataset(ground_truth_file, pairwise_file)
     G = nx.convert_node_labels_to_integers(G)  # nodes need to be named 0…n in order for fairPageRank to work
@@ -230,7 +230,7 @@ def rank_full_dataset(rank_using=rankCentrality,
 
     if rank_using == 'fairPageRank':
         current_proc = multiprocessing.current_process()
-        path = './data/fairPageRank/tmp_' + str(current_proc._identity[0])
+        path = '../fairpair/data/fairPageRank/tmp_' + str(current_proc._identity[0])
         ranking, other_nodes = ranker.apply(rank_using=rank_using, path=path)
         ranker_name = 'fairPageRank'
     else:
@@ -238,9 +238,9 @@ def rank_full_dataset(rank_using=rankCentrality,
         ranker_name = rank_using.__name__
     
     ranking_as_ranks = scores_to_rank(ranking, invert=False) # invert=True
-    for node, data in G.majority.nodes(data=True):
+    for node, data in G.priv.nodes(data=True):
         ranks.append((0, 0, data['skill'], ranking_as_ranks[node], 'Privileged', 'full dataset', ranker_name))
-    for node, data in G.minority.nodes(data=True):
+    for node, data in G.unpriv.nodes(data=True):
         ranks.append((0, 0, data['skill'], ranking_as_ranks[node], 'Unprivileged', 'full dataset', ranker_name))
     
     return ranks
