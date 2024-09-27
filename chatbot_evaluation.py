@@ -7,8 +7,8 @@ from fairpair import *
 
 def ranking_evaluation(trial:int, sampling_method:str, ranking_method:str, group_attribute:str, benchmark:str):
 
-    #file = '../fairpair/data/chatbot_arena_results/basicMethods_correlations_full_dataset.csv'
-    file = '../fairpair/data/chatbot_arena_results/GNNRank_correlations_full_dataset.csv'
+    file = '../fairpair/data/chatbot_arena_results/basicMethods_correlations_fullDataset.csv'
+    #file = '../fairpair/data/chatbot_arena_results/GNNRank_correlations_fullDataset.csv'
 
     data = pd.read_csv(file)
 
@@ -18,8 +18,11 @@ def ranking_evaluation(trial:int, sampling_method:str, ranking_method:str, group
     filtered_df = filtered_df[filtered_df['trial'] == trial] 
     filtered_df = filtered_df[filtered_df['sampling method'] == sampling_method]
     filtered_df = filtered_df[filtered_df['group attribute'] == group_attribute] 
-    filtered_df = filtered_df[filtered_df['benchmark'] == benchmark] 
+    filtered_df = filtered_df[filtered_df['benchmark'] == benchmark]
+    filtered_df = filtered_df.dropna(subset=['skill score'])
     filtered_df = filtered_df.reset_index(drop=True)
+
+    if not len(filtered_df): return pd.DataFrame()
 
     first_iteration = filtered_df.iteration.unique()[0]
 
@@ -79,9 +82,10 @@ def ranking_evaluation(trial:int, sampling_method:str, ranking_method:str, group
 if __name__ == '__main__':
 
     # trial, benchmark
-    tasks = list(product([0], ['full dataset'],
-                         #['rankCentrality', 'randomRankRecovery', 'davidScore', 'fairPageRank'],
-                         ['GNNRank'],
+    tasks = list(product(range(10),
+                         ['full dataset'],
+                         ['rankCentrality', 'randomRankRecovery', 'davidScore', 'fairPageRank', 'btl'],
+                         #['GNNRank'],
                          ['often_compared', 'often_first', 'often_formatted', 'open_source'],
                          ['helm', 'alpaca', 'arena_hard']))
 
@@ -89,4 +93,4 @@ if __name__ == '__main__':
     results = pool.starmap(ranking_evaluation, tasks)
 
     results = pd.concat(results, ignore_index=True)
-    results.to_csv('../fairpair/data/chatbot_arena_results/chatbotArena_GNNRank_fullDataset_evaluated.csv', index=False)
+    results.to_csv('../fairpair/data/chatbot_arena_results/chatbotArena_basicMethods_fullDataset_evaluated.csv', index=False)

@@ -21,7 +21,8 @@ def load_dataset(ground_truth_file:str, comparisons_file:str, group_attribute:st
     benchmark_df = pd.read_csv(ground_truth_file, index_col=0) # model names as index
 
     G = nx.from_pandas_adjacency(wins_df, create_using=nx.DiGraph)
-    G2 = G.subgraph(nodes=benchmark_df.index).copy()  # a smaller graph with only the models that we have benchmark data for
+    #G2 = G.subgraph(nodes=benchmark_df.index).copy()  # a smaller graph with only the models that we have benchmark data for
+    G2 = G # recovery on the full dataset
 
     attr_df = benchmark_df[['score', group_attribute]].rename(columns={'score': 'skill'})
     attr_df['unpriv'] = attr_df[group_attribute] == 0
@@ -48,23 +49,34 @@ def rank_full_dataset(
     ranker = RankRecovery(G)
     ranks = pd.DataFrame(columns=['trial', 'iteration', 'skill score', 'rank', 'group',
                                   'sampling method', 'ranker', 'group attribute', 'benchmark'])
-
-    if rank_using == 'fairPageRank':
-        current_proc = multiprocessing.current_process()
-        path = '../fairpair/data/fairPageRank/tmp_' + str(current_proc._identity[0])
-        ranking, other_nodes = ranker.apply(rank_using=rank_using, path=path)
-        ranker_name = 'fairPageRank'
-    else:
-        ranking, other_nodes = ranker.apply(rank_using=rank_using)
-        ranker_name = rank_using.__name__
     
-    ranking_as_ranks = scores_to_rank(ranking, invert=False) # invert=True
-    for node, data in G.priv.nodes(data=True):
-        ranks = pd.concat([ranks, pd.DataFrame([[0, 0, data['skill'], ranking_as_ranks[node],
-                                                'Privileged', 'full dataset', ranker_name, group_attribute, benchmark]], columns=ranks.columns)])
-    for node, data in G.unpriv.nodes(data=True):
-        ranks = pd.concat([ranks, pd.DataFrame([[0, 0, data['skill'], ranking_as_ranks[node],
-                                                'Unprivileged', 'full dataset', ranker_name, group_attribute, benchmark]], columns=ranks.columns)])
+    if rank_using in [randomRankRecovery, btl]: seeds = [93, 55, 31, 4, 97, 13, 51, 5, 75, 74] # multiple runs because of randomness
+    else: seeds = [1]
+
+    for trial, seed in enumerate(seeds):
+        if rank_using == 'fairPageRank':
+            current_proc = multiprocessing.current_process()
+            path = '../fairpair/data/fairPageRank/tmp_' + str(current_proc._identity[0])
+            ranking, other_nodes = ranker.apply(rank_using=rank_using, path=path)
+            ranker_name = 'fairPageRank'
+        elif rank_using == randomRankRecovery:
+            ranking, other_nodes = ranker.apply(rank_using=rank_using, seed=seed)
+            ranker_name = rank_using.__name__
+        else:
+            ranking, other_nodes = ranker.apply(rank_using=rank_using)
+            ranker_name = rank_using.__name__
+        
+        ranking_as_ranks = scores_to_rank(ranking, invert=True) # invert=True
+        for node, data in G.priv.nodes(data=True):
+            if 'skill' in data: skill = data['skill']
+            else: skill = np.NaN
+            ranks = pd.concat([ranks, pd.DataFrame([[trial, 0, skill, ranking_as_ranks[node],
+                                                    'Privileged', 'full dataset', ranker_name, group_attribute, benchmark]], columns=ranks.columns)])
+        for node, data in G.unpriv.nodes(data=True):
+            if 'skill' in data: skill = data['skill']
+            else: skill = np.NaN
+            ranks = pd.concat([ranks, pd.DataFrame([[trial, 0, skill, ranking_as_ranks[node],
+                                                    'Unprivileged', 'full dataset', ranker_name, group_attribute, benchmark]], columns=ranks.columns)])
     
     return ranks
 
@@ -81,7 +93,7 @@ def rank_full_dataset_GNNRank(
     # use defaults for: `early_stopping`, `epochs`
     # handle output cleverly using: `load_only=True`, `regenerate_data=True`, `be_silent=True`
     # set K=10 for smaller dataset (used to be 20)
-    args = ArgsNamespace(AllTrain=True, ERO_style='uniform', F=70, Fiedler_layer_num=5, K=10, N=350, SavePred=False, all_methods=['DIGRAC', 'ib'],
+    args = ArgsNamespace(AllTrain=True, ERO_style='uniform', F=70, Fiedler_layer_num=5, K=20, N=350, SavePred=False, all_methods=['DIGRAC', 'ib'],
                      alpha=1.0, baseline='syncRank', cuda=True, data_path='/home/georg/fairpair/GNNRank/src/../data/',
                      dataset=f'IMDB-WIKI_correlations/full_dataset', be_silent=True,
                      debug=False, device=torch.device(type='cuda'), dropout=0.5, early_stopping=200, epochs=1000, eta=0.1, fill_val=0.5, hidden=8, hop=2,
@@ -103,12 +115,16 @@ def rank_full_dataset_GNNRank(
     score, pred_label = trainer.predict_nn(model_name='ib', model_path=save_path_best, A=None, GNN_variant='proximal_baseline')
     ranking = {key: 1-score[0] for key, score in enumerate(score.cpu().detach().numpy())}
     
-    ranking_as_ranks = scores_to_rank(ranking, invert=False) # invert=True
+    ranking_as_ranks = scores_to_rank(ranking, invert=True) # invert=True
     for node, data in G.priv.nodes(data=True):
-        ranks = pd.concat([ranks, pd.DataFrame([[0, 0, data['skill'], ranking_as_ranks[node],
+        if 'skill' in data: skill = data['skill']
+        else: skill = np.NaN
+        ranks = pd.concat([ranks, pd.DataFrame([[0, 0, skill, ranking_as_ranks[node],
                                                 'Privileged', 'full dataset', 'GNNRank', group_attribute, benchmark]], columns=ranks.columns)])
     for node, data in G.unpriv.nodes(data=True):
-        ranks = pd.concat([ranks, pd.DataFrame([[0, 0, data['skill'], ranking_as_ranks[node],
+        if 'skill' in data: skill = data['skill']
+        else: skill = np.NaN
+        ranks = pd.concat([ranks, pd.DataFrame([[0, 0, skill, ranking_as_ranks[node],
                                                 'Unprivileged', 'full dataset', 'GNNRank', group_attribute, benchmark]], columns=ranks.columns)])
     
     return ranks
@@ -126,23 +142,23 @@ def full_dataset_GNNRank_starmap(args):
 
 if __name__ == '__main__':
 
-    #tasks = list(product([randomRankRecovery, davidScore, rankCentrality, 'fairPageRank'],
-    #                     ['often_compared', 'often_first', 'often_formatted', 'open_source'],
-    #                     ['helm', 'alpaca', 'arena_hard'])) # rank_using, group_attribute, benchmark
+    tasks = list(product([randomRankRecovery, davidScore, rankCentrality, 'fairPageRank', btl],
+                         ['often_compared', 'often_first', 'often_formatted', 'open_source'],
+                         ['helm', 'alpaca', 'arena_hard'])) # rank_using, group_attribute, benchmark
     
     # for GNNRank
-    tasks = list(product(['often_compared', 'often_first', 'often_formatted', 'open_source'],
-                         ['helm', 'alpaca', 'arena_hard'])) # group_attribute, benchmark
+    #tasks = list(product(['often_compared', 'often_first', 'often_formatted', 'open_source'],
+    #                     ['helm', 'alpaca', 'arena_hard'])) # group_attribute, benchmark
 
     try: multiprocessing.set_start_method('spawn') # if it wasn't alrady set, make sure we use the `spawn` method.
     except RuntimeError: pass
 
-    with multiprocessing.Pool(processes=1) as pool:
-        pbar = tqdm(pool.imap(full_dataset_GNNRank_starmap, tasks), total=len(tasks))
+    with multiprocessing.Pool() as pool:
+        pbar = tqdm(pool.imap(full_dataset_starmap, tasks), total=len(tasks))
         results = list(pbar) # list invokes the evaluation
     
     ranks = pd.concat(results, ignore_index=True)
 
     #ranks = rank_full_dataset_GNNRank('often_first', 'helm')
 
-    ranks.to_csv('../fairpair/data/chatbot_arena_results/GNNRank_correlations_full_dataset.csv', index=False)
+    ranks.to_csv('../fairpair/data/chatbot_arena_results/basicMethods_correlations_fullDataset.csv', index=False)
