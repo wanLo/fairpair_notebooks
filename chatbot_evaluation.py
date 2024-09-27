@@ -7,8 +7,8 @@ from fairpair import *
 
 def ranking_evaluation(trial:int, sampling_method:str, ranking_method:str, group_attribute:str, benchmark:str):
 
-    file = '../fairpair/data/chatbot_arena_results/basicMethods_correlations_fullDataset.csv'
-    #file = '../fairpair/data/chatbot_arena_results/GNNRank_correlations_fullDataset.csv'
+    file = '../fairpair/data/chatbot_arena_results/basicMethods_correlations_fullMedian_phiPriv.csv'
+    #file = '../fairpair/data/chatbot_arena_results/GNNRank_correlations_fullMedian.csv'
 
     data = pd.read_csv(file)
 
@@ -93,4 +93,4 @@ if __name__ == '__main__':
     results = pool.starmap(ranking_evaluation, tasks)
 
     results = pd.concat(results, ignore_index=True)
-    results.to_csv('../fairpair/data/chatbot_arena_results/chatbotArena_basicMethods_fullDataset_evaluated.csv', index=False)
+    results.to_csv('../fairpair/data/chatbot_arena_results/chatbotArena_basicMethods_fullMedian_phiPriv_evaluated.csv', index=False)

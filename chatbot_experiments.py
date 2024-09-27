@@ -21,8 +21,8 @@ def load_dataset(ground_truth_file:str, comparisons_file:str, group_attribute:st
     benchmark_df = pd.read_csv(ground_truth_file, index_col=0) # model names as index
 
     G = nx.from_pandas_adjacency(wins_df, create_using=nx.DiGraph)
-    #G2 = G.subgraph(nodes=benchmark_df.index).copy()  # a smaller graph with only the models that we have benchmark data for
-    G2 = G # recovery on the full dataset
+    G2 = G.subgraph(nodes=benchmark_df.index).copy()  # a smaller graph with only the models that we have benchmark data for
+    #G2 = G # recovery on the full dataset – DOES NOT WORK with fairPageRank
 
     attr_df = benchmark_df[['score', group_attribute]].rename(columns={'score': 'skill'})
     attr_df['unpriv'] = attr_df[group_attribute] == 0
@@ -39,7 +39,8 @@ def rank_full_dataset(
         benchmark='helm',
         comparisons_file='../fairpair/data/chatbot_arena/comparisons_cleaned.csv') -> list:
     
-    ground_truth_file=f'../fairpair/data/chatbot_arena/{benchmark}_combined.csv'
+    ground_truth_file=f'../fairpair/data/chatbot_arena/{benchmark}_fullMedian.csv' # groups based on median in full dataset
+    #ground_truth_file=f'../fairpair/data/chatbot_arena/{benchmark}_combined.csv' # groups based on median in subset
     
     G = load_dataset(ground_truth_file, comparisons_file, group_attribute)
     G = nx.convert_node_labels_to_integers(G)  # nodes need to be named 0…n in order for fairPageRank to work
@@ -55,11 +56,12 @@ def rank_full_dataset(
 
     for trial, seed in enumerate(seeds):
         if rank_using == 'fairPageRank':
+            phi = len(G.priv_nodes) / len(G.nodes) # size of the unprivileged group
             current_proc = multiprocessing.current_process()
             path = '../fairpair/data/fairPageRank/tmp_' + str(current_proc._identity[0])
-            ranking, other_nodes = ranker.apply(rank_using=rank_using, path=path)
+            ranking, other_nodes = ranker.apply(rank_using=rank_using, path=path, phi=phi)
             ranker_name = 'fairPageRank'
-        elif rank_using == randomRankRecovery:
+        elif rank_using in [randomRankRecovery, btl]:
             ranking, other_nodes = ranker.apply(rank_using=rank_using, seed=seed)
             ranker_name = rank_using.__name__
         else:
@@ -82,18 +84,20 @@ def rank_full_dataset(
 
 
 def rank_full_dataset_GNNRank(
+        trial=0,
         group_attribute='long_response',
         benchmark='helm',
         comparisons_file='../fairpair/data/chatbot_arena/comparisons_cleaned.csv') -> list:
     
-    ground_truth_file=f'../fairpair/data/chatbot_arena/{benchmark}_combined.csv'
+    ground_truth_file=f'../fairpair/data/chatbot_arena/{benchmark}_fullMedian.csv' # groups based on median in full dataset
+    #ground_truth_file=f'../fairpair/data/chatbot_arena/{benchmark}_combined.csv' # groups based on median in subset
     
     # customize `dataset` to properly save the model
     # get optimal settings from the paper: `baseline`, `pretrain_with`, `train_with`, `upset_margin_coeff`
     # use defaults for: `early_stopping`, `epochs`
     # handle output cleverly using: `load_only=True`, `regenerate_data=True`, `be_silent=True`
     # set K=10 for smaller dataset (used to be 20)
-    args = ArgsNamespace(AllTrain=True, ERO_style='uniform', F=70, Fiedler_layer_num=5, K=20, N=350, SavePred=False, all_methods=['DIGRAC', 'ib'],
+    args = ArgsNamespace(AllTrain=True, ERO_style='uniform', F=70, Fiedler_layer_num=5, K=10, N=350, SavePred=False, all_methods=['DIGRAC', 'ib'],
                      alpha=1.0, baseline='syncRank', cuda=True, data_path='/home/georg/fairpair/GNNRank/src/../data/',
                      dataset=f'IMDB-WIKI_correlations/full_dataset', be_silent=True,
                      debug=False, device=torch.device(type='cuda'), dropout=0.5, early_stopping=200, epochs=1000, eta=0.1, fill_val=0.5, hidden=8, hop=2,
@@ -119,12 +123,12 @@ def rank_full_dataset_GNNRank(
     for node, data in G.priv.nodes(data=True):
         if 'skill' in data: skill = data['skill']
         else: skill = np.NaN
-        ranks = pd.concat([ranks, pd.DataFrame([[0, 0, skill, ranking_as_ranks[node],
+        ranks = pd.concat([ranks, pd.DataFrame([[trial, 0, skill, ranking_as_ranks[node],
                                                 'Privileged', 'full dataset', 'GNNRank', group_attribute, benchmark]], columns=ranks.columns)])
     for node, data in G.unpriv.nodes(data=True):
         if 'skill' in data: skill = data['skill']
         else: skill = np.NaN
-        ranks = pd.concat([ranks, pd.DataFrame([[0, 0, skill, ranking_as_ranks[node],
+        ranks = pd.concat([ranks, pd.DataFrame([[trial, 0, skill, ranking_as_ranks[node],
                                                 'Unprivileged', 'full dataset', 'GNNRank', group_attribute, benchmark]], columns=ranks.columns)])
     
     return ranks
@@ -147,7 +151,8 @@ if __name__ == '__main__':
                          ['helm', 'alpaca', 'arena_hard'])) # rank_using, group_attribute, benchmark
     
     # for GNNRank
-    #tasks = list(product(['often_compared', 'often_first', 'often_formatted', 'open_source'],
+    #tasks = list(product(range(10),
+    #                     ['often_compared', 'often_first', 'often_formatted', 'open_source'],
     #                     ['helm', 'alpaca', 'arena_hard'])) # group_attribute, benchmark
 
     try: multiprocessing.set_start_method('spawn') # if it wasn't alrady set, make sure we use the `spawn` method.
@@ -161,4 +166,4 @@ if __name__ == '__main__':
 
     #ranks = rank_full_dataset_GNNRank('often_first', 'helm')
 
-    ranks.to_csv('../fairpair/data/chatbot_arena_results/basicMethods_correlations_fullDataset.csv', index=False)
+    ranks.to_csv('../fairpair/data/chatbot_arena_results/basicMethods_correlations_fullMedian_phiPriv.csv', index=False)
